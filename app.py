@@ -384,7 +384,9 @@ def settings():
         config.enable_stream_test = request.form.get('enable_stream_test') == 'on'
         config.test_interval_hours = int(request.form.get('test_interval_hours', 24))
         config.match_by = request.form.get('match_by', 'name')
-        config.similarity_threshold = float(request.form.get('similarity_threshold', 0.85))
+        # 处理相似度阈值：从百分比转换为小数
+        similarity_threshold = float(request.form.get('similarity_threshold', 85))
+        config.similarity_threshold = similarity_threshold / 100
         config.test_all_sources = request.form.get('test_all_sources') == 'on'
         
         # 保存配置

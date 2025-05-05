@@ -26,7 +26,6 @@ class StreamTester:
         """
         self.timeout = timeout
         self.max_workers = max_workers
-    
     def test_stream(self, url):
         """测试单个流URL的可用性
         
@@ -39,16 +38,27 @@ class StreamTester:
         start_time = time.time()
         
         try:
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+            
+            # 对于特殊格式的URL（如斗鱼等），先尝试GET请求
+            if 'douyu' in url or 'huya' in url or 'bilibili' in url:
+                response = requests.get(url, timeout=self.timeout, headers=headers, stream=True)
+                # 读取少量数据以验证流是否可用
+                for chunk in response.iter_content(chunk_size=1024):
+                    if chunk:  # 过滤掉保持活动的新块
+                        break
             # 对于M3U8文件，尝试获取内容
-            if url.endswith('.m3u8'):
-                response = requests.get(url, timeout=self.timeout, stream=True)
+            elif url.endswith('.m3u8'):
+                response = requests.get(url, timeout=self.timeout, headers=headers, stream=True)
                 # 读取少量数据以验证流是否可用
                 for chunk in response.iter_content(chunk_size=1024):
                     if chunk:  # 过滤掉保持活动的新块
                         break
             # 对于其他类型的流，使用HEAD请求
             else:
-                response = requests.head(url, timeout=self.timeout)
+                response = requests.head(url, timeout=self.timeout, headers=headers)
             
             elapsed = time.time() - start_time
             

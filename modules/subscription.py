@@ -69,14 +69,9 @@ class SubscriptionManager:
             
         Returns:
             tuple: (是否有效, 错误消息)
-        """
-        # 检查URL格式
+        """        # 检查URL格式
         if not url.startswith(('http://', 'https://')):
             return False, "URL必须以http://或https://开头"
-        
-        # 检查URL是否以.m3u或.m3u8结尾
-        if not (url.endswith('.m3u') or url.endswith('.m3u8')):
-            return False, "URL必须以.m3u或.m3u8结尾"
         
         # 尝试访问URL
         try:

@@ -52,10 +52,9 @@
                     <div class="form-text">选择频道匹配的方式</div>
                 </div>
                 <div class="mb-3">
-                    <label for="similarity_threshold" class="form-label">名称相似度阈值</label>
-                    <input type="range" class="form-range" id="similarity_threshold" name="similarity_threshold"
-                           value="{{ config.similarity_threshold * 100 }}" min="50" max="100" step="5">
-                    <div class="form-text">当前值: <span id="similarity_value">{{ "%.0f"|format(config.similarity_threshold * 100) }}%</span></div>
+                    <label for="similarity_threshold" class="form-label">名称相似度阈值</label>                    <input type="range" class="form-range" id="similarity_threshold" name="similarity_threshold"
+                           value="{{ (config.similarity_threshold * 100)|int }}" min="50" max="100" step="5">
+                    <div class="form-text">当前值: <span id="similarity_value">{{ (config.similarity_threshold * 100)|int }}%</span></div>
                 </div>
             </div>
 

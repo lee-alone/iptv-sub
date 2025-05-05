@@ -7,5 +7,5 @@
   "test_interval_hours": 24,
   "test_all_sources": false,
   "match_by": "name",
-  "similarity_threshold": 0.85
+  "similarity_threshold": 0.5
 }

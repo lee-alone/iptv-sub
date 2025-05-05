@@ -1,0 +1,74 @@
+{% extends "layout.html" %}
+
+{% block title %}编辑订阅源 - IPTV M3U 聚合软件{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h5 class="card-title mb-0"><i class="bi bi-pencil"></i> 编辑订阅源</h5>
+    </div>
+    <div class="card-body">
+        {% if error %}
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i> {{ error }}
+        </div>
+        {% endif %}
+        
+        <form method="post">
+            <div class="mb-3">
+                <label for="name" class="form-label">名称</label>
+                <input type="text" class="form-control" id="name" name="name" 
+                       value="{{ subscription.name }}" placeholder="订阅源名称（可选）">
+                <div class="form-text">为订阅源指定一个易于识别的名称</div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="url" class="form-label">URL</label>
+                <input type="url" class="form-control" id="url" name="url" 
+                       value="{{ subscription.url }}" placeholder="http://example.com/iptv.m3u" required>
+                <div class="form-text">输入有效的M3U文件URL，必须以http://或https://开头，以.m3u或.m3u8结尾</div>
+            </div>
+            
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('subscription_list') }}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> 返回
+                </a>
+                <div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> 保存
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header bg-light">
+        <h6 class="card-title mb-0">订阅源信息</h6>
+    </div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">添加时间</dt>
+            <dd class="col-sm-9">{{ subscription.added_at }}</dd>
+            
+            <dt class="col-sm-3">最后更新</dt>
+            <dd class="col-sm-9">{{ subscription.last_updated or '未更新' }}</dd>
+            
+            <dt class="col-sm-3">频道数量</dt>
+            <dd class="col-sm-9">{{ subscription.channel_count }}</dd>
+            
+            <dt class="col-sm-3">当前状态</dt>
+            <dd class="col-sm-9">
+                {% if subscription.status == 'active' %}
+                <span class="badge bg-success">活跃</span>
+                {% elif subscription.status == 'failed' %}
+                <span class="badge bg-danger">失败</span>
+                {% else %}
+                <span class="badge bg-secondary">未知</span>
+                {% endif %}
+            </dd>
+        </dl>
+    </div>
+</div>
+{% endblock %}
