@@ -1,0 +1,206 @@
+{% extends "layout.html" %}
+
+{% block title %}首页 - IPTV M3U 聚合软件{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0"><i class="bi bi-speedometer2"></i> 仪表盘</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h3 class="card-title">{{ stats.total_subscriptions }}</h3>
+                                <p class="card-text">订阅源</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h3 class="card-title">{{ stats.total_channels }}</h3>
+                                <p class="card-text">总频道数</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h3 class="card-title">{{ stats.total_groups }}</h3>
+                                <p class="card-text">频道分组</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h3 class="card-title">{{ stats.online_channels }}</h3>
+                                <p class="card-text">在线频道</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0"><i class="bi bi-collection"></i> 订阅源</h5>
+                <a href="{{ url_for('add_subscription') }}" class="btn btn-sm btn-light">
+                    <i class="bi bi-plus"></i> 添加
+                </a>
+            </div>
+            <div class="card-body">
+                {% if subscriptions %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>名称</th>
+                                <th>频道数</th>
+                                <th>状态</th>
+                                <th>上次更新</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sub in subscriptions %}
+                            <tr>
+                                <td>{{ sub.name }}</td>
+                                <td>{{ sub.channel_count }}</td>
+                                <td>
+                                    {% if sub.status == 'active' %}
+                                    <span class="badge bg-success">活跃</span>
+                                    {% elif sub.status == 'failed' %}
+                                    <span class="badge bg-danger">失败</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">未知</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ sub.last_updated or '未更新' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> 暂无订阅源，请点击右上角的"添加"按钮添加订阅源。
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0"><i class="bi bi-tv"></i> 频道状态</h5>
+                <a href="{{ url_for('channel_list') }}" class="btn btn-sm btn-light">
+                    <i class="bi bi-list"></i> 查看全部
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h3 class="card-title">{{ stats.online_channels }}</h3>
+                                <p class="card-text">在线</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card bg-danger text-white">
+                            <div class="card-body text-center">
+                                <h3 class="card-title">{{ stats.offline_channels }}</h3>
+                                <p class="card-text">离线</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card bg-secondary text-white">
+                            <div class="card-body text-center">
+                                <h3 class="card-title">{{ stats.untested_channels }}</h3>
+                                <p class="card-text">未测试</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <button id="testAllBtn" class="btn btn-primary w-100" onclick="testAllChannels()">
+                        <i class="bi bi-lightning"></i> 测试所有频道
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0"><i class="bi bi-folder"></i> 频道分组</h5>
+            </div>
+            <div class="card-body">
+                {% if groups %}
+                <div class="row">
+                    {% for group in groups %}
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('channel_list', group=group) }}" class="text-decoration-none">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">{{ group }}</h5>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> 暂无频道分组，请先添加订阅源并更新。
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function testAllChannels() {
+        $('#testAllBtn').prop('disabled', true).html('<i class="bi bi-lightning"></i> 测试中...');
+        
+        $.ajax({
+            url: '{{ url_for("test_all_channels") }}',
+            type: 'POST',
+            success: function(response) {
+                if (response.success) {
+                    alert('测试任务已启动，请稍后刷新页面查看结果');
+                } else {
+                    alert('测试失败: ' + response.message);
+                }
+            },
+            error: function() {
+                alert('请求失败，请稍后重试');
+            },
+            complete: function() {
+                setTimeout(function() {
+                    $('#testAllBtn').prop('disabled', false).html('<i class="bi bi-lightning"></i> 测试所有频道');
+                }, 3000);
+            }
+        });
+    }
+</script>
+{% endblock %}

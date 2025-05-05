@@ -1,0 +1,92 @@
+{% extends "layout.html" %}
+
+{% block title %}订阅源管理 - IPTV M3U 聚合软件{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0"><i class="bi bi-collection"></i> 订阅源管理</h5>
+        <a href="{{ url_for('add_subscription') }}" class="btn btn-sm btn-light">
+            <i class="bi bi-plus"></i> 添加订阅源
+        </a>
+    </div>
+    <div class="card-body">
+        {% if subscriptions %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>名称</th>
+                        <th>URL</th>
+                        <th>频道数</th>
+                        <th>状态</th>
+                        <th>上次更新</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sub in subscriptions %}
+                    <tr>
+                        <td>{{ sub.name }}</td>
+                        <td>
+                            <div class="text-truncate" style="max-width: 250px;" title="{{ sub.url }}">
+                                {{ sub.url }}
+                            </div>
+                        </td>
+                        <td>{{ sub.channel_count }}</td>
+                        <td>
+                            {% if sub.status == 'active' %}
+                            <span class="badge bg-success">活跃</span>
+                            {% elif sub.status == 'failed' %}
+                            <span class="badge bg-danger">失败</span>
+                            {% else %}
+                            <span class="badge bg-secondary">未知</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ sub.last_updated or '未更新' }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('edit_subscription', url=sub.url) }}" class="btn btn-outline-primary">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button type="button" class="btn btn-outline-danger" onclick="deleteSubscription('{{ sub.url }}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> 暂无订阅源，请点击右上角的"添加订阅源"按钮添加。
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function deleteSubscription(url) {
+        if (confirm('确定要删除此订阅源吗？')) {
+            $.ajax({
+                url: '{{ url_for("delete_subscription", url="") }}' + url,
+                type: 'POST',
+                success: function(response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert('删除失败: ' + response.message);
+                    }
+                },
+                error: function() {
+                    alert('请求失败，请稍后重试');
+                }
+            });
+        }
+    }
+</script>
+{% endblock %}

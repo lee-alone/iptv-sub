@@ -1,0 +1,11 @@
+{
+  "request_timeout": 30,
+  "stream_test_timeout": 5,
+  "max_test_workers": 10,
+  "update_interval_hours": 24,
+  "enable_stream_test": true,
+  "test_interval_hours": 24,
+  "test_all_sources": false,
+  "match_by": "name",
+  "similarity_threshold": 0.85
+}

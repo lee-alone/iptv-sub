@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+
+{% block title %}添加订阅源 - IPTV M3U 聚合软件{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h5 class="card-title mb-0"><i class="bi bi-plus-circle"></i> 添加订阅源</h5>
+    </div>
+    <div class="card-body">
+        {% if error %}
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i> {{ error }}
+        </div>
+        {% endif %}
+        
+        <form method="post" action="{{ url_for('add_subscription') }}">
+            <div class="mb-3">
+                <label for="name" class="form-label">名称</label>
+                <input type="text" class="form-control" id="name" name="name" placeholder="订阅源名称（可选）">
+                <div class="form-text">为订阅源指定一个易于识别的名称，如果不填写将自动生成。</div>
+            </div>
+            <div class="mb-3">
+                <label for="url" class="form-label">URL</label>
+                <input type="url" class="form-control" id="url" name="url" placeholder="http://example.com/iptv.m3u" required>
+                <div class="form-text">输入有效的M3U文件URL，必须以http://或https://开头，以.m3u或.m3u8结尾。</div>
+            </div>
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('subscription_list') }}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> 返回
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-plus"></i> 添加
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
