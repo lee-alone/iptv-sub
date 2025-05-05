@@ -9,7 +9,7 @@ import os
 import json
 import logging
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify, send_from_directory, redirect, url_for
+from flask import Flask, render_template, request, jsonify, send_from_directory, redirect, url_for, make_response
 
 # 导入功能模块
 from modules.subscription import SubscriptionManager
@@ -318,6 +318,55 @@ def download_export(filename):
     """下载导出文件"""
     return send_from_directory(os.path.join(config.data_dir, 'exports'), filename, as_attachment=True)
 
+# API路由：获取在线频道M3U
+@app.route('/api/playlist.m3u', methods=['GET'])
+def api_get_playlist():
+    """获取在线频道M3U播放列表
+    该接口可供电视盒子等设备直接访问，获取所有在线频道
+    """
+    channels = channel_aggregator.get_all_channels()
+    
+    # 仅保留在线频道
+    online_channels = [ch for ch in channels 
+                      if 'test_results' in ch 
+                      and ch['test_results'].get('status') == 'online']
+    
+    # 生成M3U内容
+    content = []
+    content.append('#EXTM3U')
+    
+    for channel in online_channels:
+        # 获取工作的URL
+        url = channel.get('test_results', {}).get('working_url') or channel.get('url', '')
+        if not url:
+            continue
+            
+        # 构建EXTINF行
+        extinf = '#EXTINF:-1'
+        if channel.get('tvg_id'):
+            extinf += f' tvg-id="{channel["tvg_id"]}"'
+        if channel.get('tvg_name'):
+            extinf += f' tvg-name="{channel["tvg_name"]}"'
+        elif channel.get('name'):
+            extinf += f' tvg-name="{channel["name"]}"'
+        if channel.get('tvg_logo'):
+            extinf += f' tvg-logo="{channel["tvg_logo"]}"'
+        if channel.get('group_title'):
+            extinf += f' group-title="{channel["group_title"]}"'
+            
+        # 添加频道名称
+        extinf += f',{channel["name"]}'
+        
+        # 添加到内容列表
+        content.append(extinf)
+        content.append(url)
+    
+    # 返回M3U文件
+    response = make_response('\n'.join(content))
+    response.headers['Content-Type'] = 'audio/x-mpegurl'
+    response.headers['Content-Disposition'] = 'inline; filename=playlist.m3u'
+    return response
+
 # 路由：删除导出文件
 @app.route('/export/delete/<path:filename>', methods=['POST'])
 def delete_export(filename):
@@ -365,4 +414,4 @@ def settings():
 
 # 启动应用
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=80)

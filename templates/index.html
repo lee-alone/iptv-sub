@@ -5,6 +5,23 @@
 {% block content %}
 <div class="row">
     <div class="col-md-12 mb-4">
+        <div class="alert alert-info" role="alert">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <h4 class="alert-heading"><i class="bi bi-broadcast"></i> IPTV 播放列表</h4>
+                    <p class="mb-0">使用以下地址获取在线频道的 M3U 播放列表，可直接用于电视盒子、播放器等设备</p>
+                </div>
+                <button class="btn btn-outline-primary" onclick="copyApiUrl()">
+                    <i class="bi bi-clipboard"></i> 复制地址
+                </button>
+            </div>
+            <hr>
+            <div class="input-group">
+                <input type="text" class="form-control font-monospace" value="{{ request.url_root }}api/playlist.m3u" 
+                       id="apiUrl" readonly onclick="this.select()">
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header bg-primary text-white">
                 <h5 class="card-title mb-0"><i class="bi bi-speedometer2"></i> 仪表盘</h5>
