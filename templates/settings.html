@@ -1,0 +1,89 @@
+{% extends "layout.html" %}
+
+{% block title %}配置 - IPTV M3U 聚合软件{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h5 class="card-title mb-0"><i class="bi bi-gear"></i> 系统配置</h5>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            <div class="mb-3">
+                <h6 class="border-bottom pb-2">更新设置</h6>
+                <div class="mb-3">
+                    <label for="update_interval_hours" class="form-label">更新间隔（小时）</label>
+                    <input type="number" class="form-control" id="update_interval_hours" name="update_interval_hours" 
+                           value="{{ config.update_interval_hours }}" min="1" required>
+                    <div class="form-text">设置自动更新订阅源的时间间隔</div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <h6 class="border-bottom pb-2">流媒体测试设置</h6>
+                <div class="form-check mb-3">
+                    <input type="checkbox" class="form-check-input" id="enable_stream_test" name="enable_stream_test"
+                           {% if config.enable_stream_test %}checked{% endif %}>
+                    <label class="form-check-label" for="enable_stream_test">启用自动流媒体测试</label>
+                </div>
+                <div class="mb-3">
+                    <label for="test_interval_hours" class="form-label">测试间隔（小时）</label>
+                    <input type="number" class="form-control" id="test_interval_hours" name="test_interval_hours" 
+                           value="{{ config.test_interval_hours }}" min="1">
+                    <div class="form-text">设置自动测试频道的时间间隔</div>
+                </div>
+                <div class="form-check mb-3">
+                    <input type="checkbox" class="form-check-input" id="test_all_sources" name="test_all_sources"
+                           {% if config.test_all_sources %}checked{% endif %}>
+                    <label class="form-check-label" for="test_all_sources">测试所有源URL</label>
+                    <div class="form-text">启用后将测试频道的所有可用源</div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <h6 class="border-bottom pb-2">频道匹配设置</h6>
+                <div class="mb-3">
+                    <label for="match_by" class="form-label">匹配方式</label>
+                    <select class="form-select" id="match_by" name="match_by">
+                        <option value="name" {% if config.match_by == 'name' %}selected{% endif %}>按名称</option>
+                        <option value="tvg_id" {% if config.match_by == 'tvg_id' %}selected{% endif %}>按TVG ID</option>
+                        <option value="both" {% if config.match_by == 'both' %}selected{% endif %}>两者都匹配</option>
+                    </select>
+                    <div class="form-text">选择频道匹配的方式</div>
+                </div>
+                <div class="mb-3">
+                    <label for="similarity_threshold" class="form-label">名称相似度阈值</label>
+                    <input type="range" class="form-range" id="similarity_threshold" name="similarity_threshold"
+                           value="{{ config.similarity_threshold * 100 }}" min="50" max="100" step="5">
+                    <div class="form-text">当前值: <span id="similarity_value">{{ "%.0f"|format(config.similarity_threshold * 100) }}%</span></div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i> 保存设置
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 更新相似度阈值显示
+    document.getElementById('similarity_threshold').addEventListener('input', function() {
+        document.getElementById('similarity_value').textContent = this.value + '%';
+    });
+
+    // 启用/禁用测试间隔输入
+    document.getElementById('enable_stream_test').addEventListener('change', function() {
+        document.getElementById('test_interval_hours').disabled = !this.checked;
+        document.getElementById('test_all_sources').disabled = !this.checked;
+    });
+
+    // 初始化禁用状态
+    document.getElementById('test_interval_hours').disabled = !document.getElementById('enable_stream_test').checked;
+    document.getElementById('test_all_sources').disabled = !document.getElementById('enable_stream_test').checked;
+</script>
+{% endblock %}

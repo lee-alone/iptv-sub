@@ -1,0 +1,119 @@
+{% extends "layout.html" %}
+
+{% block title %}导出 - IPTV M3U 聚合软件{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0"><i class="bi bi-download"></i> 创建导出</h5>
+            </div>
+            <div class="card-body">
+                {% if error %}
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i> {{ error }}
+                </div>
+                {% endif %}
+
+                <form method="post" action="{{ url_for('create_export') }}">
+                    <div class="mb-3">
+                        <label class="form-label">导出格式</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="type" id="type_m3u" value="m3u" checked>
+                            <label class="btn btn-outline-primary" for="type_m3u">M3U</label>
+
+                            <input type="radio" class="btn-check" name="type" id="type_json" value="json">
+                            <label class="btn btn-outline-primary" for="type_json">JSON</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="only_working" name="only_working">
+                            <label class="form-check-label" for="only_working">仅导出在线频道</label>
+                            <div class="form-text">只导出测试结果为"在线"的频道</div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-file-earmark-arrow-down"></i> 创建导出文件
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0"><i class="bi bi-folder"></i> 导出文件</h5>
+            </div>
+            <div class="card-body">
+                {% if exports %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>文件名</th>
+                                <th>大小</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for export in exports %}
+                            <tr>
+                                <td>{{ export.filename }}</td>
+                                <td>{{ '%.2f'|format(export.size / 1024) }} KB</td>
+                                <td>{{ export.created_at }}</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('download_export', filename=export.filename) }}" 
+                                           class="btn btn-outline-primary">
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-outline-danger"
+                                                onclick="deleteExport('{{ export.filename }}')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> 暂无导出文件
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function deleteExport(filename) {
+        if (confirm('确定要删除此导出文件吗？')) {
+            $.ajax({
+                url: '{{ url_for("delete_export", filename="") }}' + filename,
+                type: 'POST',
+                success: function(response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert('删除失败，请稍后重试');
+                    }
+                },
+                error: function() {
+                    alert('请求失败，请稍后重试');
+                }
+            });
+        }
+    }
+</script>
+{% endblock %}

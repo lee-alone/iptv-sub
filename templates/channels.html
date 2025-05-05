@@ -1,0 +1,242 @@
+{% extends "layout.html" %}
+
+{% block title %}频道管理 - IPTV M3U 聚合软件{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0"><i class="bi bi-tv"></i> 频道管理</h5>
+            <div class="d-flex gap-2">
+                <button class="btn btn-light btn-sm" onclick="testAllChannels()">
+                    <i class="bi bi-lightning"></i> 测试所有频道
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- 过滤器 -->
+        <form class="row g-3 mb-4" method="get">
+            <div class="col-md-4">
+                <label for="group" class="form-label">频道分组</label>
+                <select class="form-select" id="group" name="group" onchange="this.form.submit()">
+                    <option value="">全部分组</option>
+                    {% for group_name in groups %}
+                    <option value="{{ group_name }}" {% if group_name == current_group %}selected{% endif %}>
+                        {{ group_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="status" class="form-label">频道状态</label>
+                <select class="form-select" id="status" name="status" onchange="this.form.submit()">
+                    <option value="">全部状态</option>
+                    <option value="online" {% if current_status == 'online' %}selected{% endif %}>在线</option>
+                    <option value="offline" {% if current_status == 'offline' %}selected{% endif %}>离线</option>
+                    <option value="untested" {% if current_status == 'untested' %}selected{% endif %}>未测试</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="search" class="form-label">搜索</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" id="search" name="q" 
+                           placeholder="搜索频道名称..." value="{{ query }}">
+                    <button class="btn btn-outline-primary" type="submit">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <!-- 频道列表 -->
+        {% if channels %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>频道</th>
+                        <th>分组</th>
+                        <th>来源</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for channel in channels %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                {% if channel.tvg_logo %}
+                                <img src="{{ channel.tvg_logo }}" alt="Logo" style="width: 30px; height: 30px; object-fit: contain;">
+                                {% else %}
+                                <i class="bi bi-tv" style="font-size: 1.2rem;"></i>
+                                {% endif %}
+                                <div>
+                                    <div>{{ channel.name }}</div>
+                                    {% if channel.tvg_id %}
+                                    <small class="text-muted">ID: {{ channel.tvg_id }}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ channel.group_title }}</td>
+                        <td>
+                            <div class="text-truncate" style="max-width: 200px;" title="{{ channel.source }}">
+                                {{ channel.source }}
+                            </div>
+                        </td>
+                        <td>
+                            {% if channel.test_results %}
+                                {% if channel.test_results.status == 'online' %}
+                                <span class="badge bg-success">在线</span>
+                                {% if channel.test_results.response_time %}
+                                <small class="text-muted">{{ '%.2f'|format(channel.test_results.response_time) }}s</small>
+                                {% endif %}
+                                {% elif channel.test_results.status == 'offline' %}
+                                <span class="badge bg-danger">离线</span>
+                                {% else %}
+                                <span class="badge bg-secondary">未测试</span>
+                                {% endif %}
+                            {% else %}
+                            <span class="badge bg-secondary">未测试</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-primary" 
+                                        onclick="testChannel({{ loop.index0 }})">
+                                    <i class="bi bi-lightning"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" 
+                                        onclick="copyUrl('{{ channel.url }}')">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                                {% if channel.test_results and channel.test_results.working_url %}
+                                <button type="button" class="btn btn-outline-primary"
+                                        onclick="playChannel('{{ channel.test_results.working_url }}')">
+                                    <i class="bi bi-play"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> 没有找到符合条件的频道
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 播放器模态框 -->
+<div class="modal fade" id="playerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">频道预览</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <video id="videoPlayer" class="w-100" controls autoplay>
+                    您的浏览器不支持视频播放
+                </video>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let playerModal;
+    let videoPlayer;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        playerModal = new bootstrap.Modal(document.getElementById('playerModal'));
+        videoPlayer = document.getElementById('videoPlayer');
+    });
+
+    function testChannel(index) {
+        const button = event.target.closest('button');
+        button.disabled = true;
+        button.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+        
+        $.ajax({
+            url: '{{ url_for("test_channel", channel_id=0) }}'.replace('0', index),
+            type: 'POST',
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert('测试失败: ' + response.message);
+                    button.disabled = false;
+                    button.innerHTML = '<i class="bi bi-lightning"></i>';
+                }
+            },
+            error: function() {
+                alert('请求失败，请稍后重试');
+                button.disabled = false;
+                button.innerHTML = '<i class="bi bi-lightning"></i>';
+            }
+        });
+    }
+
+    function testAllChannels() {
+        if (!confirm('确定要测试所有频道吗？这可能需要一些时间。')) {
+            return;
+        }
+        
+        const button = event.target.closest('button');
+        button.disabled = true;
+        button.innerHTML = '<i class="bi bi-hourglass-split"></i> 测试中...';
+        
+        $.ajax({
+            url: '{{ url_for("test_all_channels") }}',
+            type: 'POST',
+            success: function(response) {
+                if (response.success) {
+                    alert('测试任务已启动，请稍后刷新页面查看结果');
+                } else {
+                    alert('启动测试任务失败: ' + response.message);
+                }
+            },
+            error: function() {
+                alert('请求失败，请稍后重试');
+            },
+            complete: function() {
+                setTimeout(function() {
+                    button.disabled = false;
+                    button.innerHTML = '<i class="bi bi-lightning"></i> 测试所有频道';
+                }, 3000);
+            }
+        });
+    }
+
+    function copyUrl(url) {
+        navigator.clipboard.writeText(url).then(function() {
+            const button = event.target.closest('button');
+            const originalHtml = button.innerHTML;
+            button.innerHTML = '<i class="bi bi-check"></i>';
+            setTimeout(() => button.innerHTML = originalHtml, 1000);
+        }).catch(function() {
+            alert('复制失败，请手动复制');
+        });
+    }
+
+    function playChannel(url) {
+        videoPlayer.src = url;
+        playerModal.show();
+    }
+
+    // 关闭模态框时停止播放
+    document.getElementById('playerModal').addEventListener('hidden.bs.modal', function () {
+        videoPlayer.pause();
+        videoPlayer.src = '';
+    });
+</script>
+{% endblock %}
