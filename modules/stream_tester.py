@@ -108,6 +108,30 @@ class StreamTester:
                 for j, source in enumerate(channel['sources']):
                     test_tasks.append((i, source['url'], f"source_{j}"))
         
+        # 使用sys.modules动态查找test_progress变量，避免循环导入问题
+        import sys
+        # 获取全局测试进度变量
+        test_progress = None
+        # 优先从app模块获取test_progress变量
+        if 'app' in sys.modules and hasattr(sys.modules['app'], 'test_progress'):
+            test_progress = sys.modules['app'].test_progress
+        else:
+            # 如果找不到app模块，则遍历所有已加载模块
+            for module_name, module in sys.modules.items():
+                if hasattr(module, 'test_progress'):
+                    test_progress = module.test_progress
+                    logger.info(f"从模块 {module_name} 获取到test_progress变量")
+                    break
+        
+        # 如果找不到test_progress，则跳过进度更新
+        if test_progress is None:
+            logger.warning("无法获取测试进度变量，将跳过进度更新")
+        
+        # 记录已完成的测试数量
+        completed_count = 0
+        online_count = 0
+        offline_count = 0
+        
         # 使用线程池并发测试
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             # 提交所有测试任务
@@ -120,6 +144,31 @@ class StreamTester:
                 try:
                     is_working, result = future.result()
                     self._update_test_result(channels[i], url, url_type, is_working, result)
+                    
+                    # 更新测试进度
+                    if url_type == 'main':  # 只在测试主URL时更新计数
+                        completed_count += 1
+                        
+                        # 更新在线/离线计数
+                        if channels[i]['test_results']['status'] == 'online':
+                            online_count += 1
+                        elif channels[i]['test_results']['status'] == 'offline':
+                            offline_count += 1
+                        
+                        # 更新全局测试进度（如果存在）
+                        if test_progress is not None:
+                            test_progress['completed'] = completed_count
+                            test_progress['online'] = online_count
+                            test_progress['offline'] = offline_count
+                            test_progress['total'] = len(channels)  # 确保总数正确
+                        
+                        # 每10个频道记录一次日志
+                        if completed_count % 10 == 0:
+                            logger.info(f"测试进度: {completed_count}/{len(channels)} (在线: {online_count}, 离线: {offline_count})")
+                            
+                        # 如果所有频道都已测试完成，记录一条完成日志
+                        if completed_count >= len(channels):
+                            logger.info(f"所有频道测试完成! 总计: {len(channels)}, 在线: {online_count}, 离线: {offline_count}")
                 except Exception as e:
                     logger.error(f"测试任务异常: {str(e)}")
         

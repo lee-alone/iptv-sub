@@ -27,7 +27,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 # 创建Flask应用
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='', static_folder='static')
 
 # 为所有请求添加 now 变量
 @app.context_processor
@@ -43,6 +43,16 @@ stream_tester = StreamTester(timeout=config.stream_test_timeout, max_workers=con
 scheduler = UpdateScheduler()
 channel_exporter = ChannelExporter(data_dir=config.data_dir)
 
+# 全局变量：测试进度跟踪
+test_progress = {
+    'is_testing': False,
+    'total': 0,
+    'completed': 0,
+    'online': 0,
+    'offline': 0,
+    'start_time': None
+}
+
 # 确保数据目录存在
 if not os.path.exists(config.data_dir):
     os.makedirs(config.data_dir)
@@ -51,6 +61,12 @@ if not os.path.exists(config.data_dir):
 def update_subscriptions():
     """更新所有订阅源"""
     logger.info("开始更新订阅源")
+    
+    # 清空现有频道数据
+    logger.info("清空现有频道数据")
+    channel_aggregator.channels = []
+    channel_aggregator.save_channels()
+    
     subscriptions = subscription_manager.get_all_subscriptions()
     all_channels = []
     
@@ -86,13 +102,36 @@ def update_subscriptions():
 # 测试流函数
 def test_streams():
     """测试所有频道流"""
+    global test_progress
+    
     logger.info("开始测试频道流")
     channels = channel_aggregator.get_all_channels()
     
-    # 批量测试
+    # 初始化测试进度
+    test_progress = {
+        'is_testing': True,
+        'total': len(channels),
+        'completed': 0,
+        'online': 0,
+        'offline': 0,
+        'start_time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+    
+    # 批量测试所有频道
     updated_channels = stream_tester.batch_test(channels, test_all_sources=config.test_all_sources)
     
+    # 更新测试进度
+    test_progress['completed'] = len(updated_channels)
+    test_progress['online'] = sum(1 for ch in updated_channels if 'test_results' in ch and ch['test_results'].get('status') == 'online')
+    test_progress['offline'] = sum(1 for ch in updated_channels if 'test_results' in ch and ch['test_results'].get('status') == 'offline')
+    
     # 保存测试结果
+    channel_aggregator.save_channels()
+    
+    # 测试完成，更新状态
+    test_progress['is_testing'] = False
+    
+    # 保存最终测试结果
     channel_aggregator.save_channels()
     
     logger.info("频道流测试完成")
@@ -102,24 +141,26 @@ def test_streams():
 @app.before_first_request
 def init_scheduler():
     """初始化调度器"""
-    # 添加订阅更新任务
+    # 添加订阅更新任务，但不立即执行
     scheduler.add_interval_job(
         'update_subscriptions', 
         update_subscriptions, 
-        hours=config.update_interval_hours
+        hours=config.update_interval_hours,
+        run_immediately=False  # 不立即执行，等待用户手动触发或到达计划时间
     )
     
-    # 添加流测试任务
+    # 添加流测试任务，但不立即执行
     if config.enable_stream_test:
         scheduler.add_interval_job(
             'test_streams', 
             test_streams, 
-            hours=config.test_interval_hours
+            hours=config.test_interval_hours,
+            run_immediately=False  # 不立即执行，等待用户手动触发或到达计划时间
         )
     
     # 启动调度器
     scheduler.start()
-    logger.info("调度器已初始化")
+    logger.info("调度器已初始化，等待手动触发或到达计划时间执行任务")
 
 # 路由：首页
 @app.route('/')
@@ -163,6 +204,11 @@ def add_subscription():
         if url:
             success, message = subscription_manager.add_subscription(url, name)
             if success:
+                # 清空现有频道数据
+                logger.info("清空现有频道数据")
+                channel_aggregator.channels = []
+                channel_aggregator.save_channels()
+                
                 # 立即更新新添加的订阅源
                 success, content = m3u_parser.fetch_m3u(url)
                 if success:
@@ -272,16 +318,35 @@ def test_channel(channel_id):
 @app.route('/channels/test-all', methods=['POST'])
 def test_all_channels():
     """批量测试所有频道"""
+    global test_progress
+    
+    # 如果已经在测试中，返回当前进度
+    if test_progress['is_testing']:
+        return jsonify({
+            'success': True, 
+            'message': '测试任务已在进行中',
+            'progress': test_progress
+        })
+    
     # 启动测试任务
-    scheduler.add_interval_job('test_streams_once', test_streams, seconds=1)
+    scheduler.add_interval_job('test_streams_once', test_streams, seconds=1, run_immediately=True)
     return jsonify({'success': True, 'message': '测试任务已启动'})
+
+# 路由：获取测试进度
+@app.route('/channels/test-progress', methods=['GET'])
+def get_test_progress():
+    """获取测试进度"""
+    return jsonify({
+        'success': True,
+        'progress': test_progress
+    })
 
 # 路由：手动更新订阅
 @app.route('/update', methods=['POST'])
 def manual_update():
     """手动更新订阅"""
     # 启动更新任务
-    scheduler.add_interval_job('update_subscriptions_once', update_subscriptions, seconds=1)
+    scheduler.add_interval_job('update_subscriptions_once', update_subscriptions, seconds=1, run_immediately=True)
     return jsonify({'success': True, 'message': '更新任务已启动'})
 
 # 路由：导出
@@ -397,7 +462,8 @@ def settings():
         scheduler.add_interval_job(
             'update_subscriptions', 
             update_subscriptions, 
-            hours=config.update_interval_hours
+            hours=config.update_interval_hours,
+            run_immediately=False  # 不立即执行，等待用户手动触发或到达计划时间
         )
         
         if config.enable_stream_test:
@@ -405,7 +471,8 @@ def settings():
             scheduler.add_interval_job(
                 'test_streams', 
                 test_streams, 
-                hours=config.test_interval_hours
+                hours=config.test_interval_hours,
+                run_immediately=False  # 不立即执行，等待用户手动触发或到达计划时间
             )
         else:
             scheduler.remove_job('test_streams')

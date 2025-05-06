@@ -3,7 +3,7 @@
     "url": "https://raw.githubusercontent.com/hujingguang/ChinaIPTV/refs/heads/main/cnTV_AutoUpdate.m3u8",
     "name": "hujingguang",
     "added_at": "2025-05-05T10:07:19.520546",
-    "last_updated": "2025-05-05T16:17:07.397228",
+    "last_updated": "2025-05-06T16:46:09.983360",
     "channel_count": 66,
     "status": "active"
   },
@@ -11,32 +11,32 @@
     "url": "https://raw.githubusercontent.com/zwc456baby/iptv_alive/refs/heads/master/live.m3u",
     "name": "zwc456baby",
     "added_at": "2025-05-05T10:08:12.491258",
-    "last_updated": "2025-05-05T16:17:10.183036",
-    "channel_count": 298,
+    "last_updated": "2025-05-06T16:46:27.371780",
+    "channel_count": 89,
     "status": "active"
   },
   {
     "url": "https://raw.githubusercontent.com/Guovin/iptv-api/gd/output/result.m3u",
     "name": "Guovin",
     "added_at": "2025-05-05T10:08:25.188123",
-    "last_updated": "2025-05-05T16:17:11.114191",
-    "channel_count": 1038,
+    "last_updated": "2025-05-06T16:46:28.941323",
+    "channel_count": 1210,
     "status": "active"
   },
   {
     "url": "https://raw.githubusercontent.com/vbskycn/iptv/refs/heads/master/tv/iptv4.m3u",
     "name": "vbskycn",
     "added_at": "2025-05-05T10:08:50.987082",
-    "last_updated": "2025-05-05T16:17:12.985083",
-    "channel_count": 1147,
+    "last_updated": "2025-05-06T16:46:30.156758",
+    "channel_count": 1127,
     "status": "active"
   },
   {
     "url": "https://raw.githubusercontent.com/8080713/iptv-api/refs/heads/main/output/result.m3u",
     "name": "8080713",
     "added_at": "2025-05-05T16:33:00.558538",
-    "last_updated": "2025-05-05T16:33:26.397486",
-    "channel_count": 2746,
+    "last_updated": "2025-05-06T16:46:32.301424",
+    "channel_count": 2195,
     "status": "active"
   }
 ]

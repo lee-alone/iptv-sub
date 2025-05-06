@@ -14,6 +14,21 @@
             </div>
         </div>
     </div>
+    
+    <!-- 测试进度条 -->
+    <div id="progressContainer" class="mb-4" style="display: none;">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">频道测试进度</h5>
+                <div class="progress mb-2">
+                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" 
+                         style="width: 0%">0%</div>
+                </div>
+                <p id="progressStatus" class="card-text">准备测试...</p>
+            </div>
+        </div>
+    </div>
     <div class="card-body">
         <!-- 过滤器 -->
         <form class="row g-3 mb-4" method="get">
@@ -104,7 +119,7 @@
                         </td>
                         <td>
                             <div class="btn-group btn-group-sm">                                <button type="button" class="btn btn-outline-primary" 
-                                        onclick="testChannel({{ loop.index0 }}, event)">
+                                        onclick="testChannel('{{ loop.index0 }}', event)"></button>
                                     <i class="bi bi-lightning"></i>
                                 </button>
                                 <button type="button" class="btn btn-outline-primary" 
@@ -154,11 +169,90 @@
 <script>
     let playerModal;
     let videoPlayer;
+    let progressTimer = null;
 
     document.addEventListener('DOMContentLoaded', function() {
         playerModal = new bootstrap.Modal(document.getElementById('playerModal'));
         videoPlayer = document.getElementById('videoPlayer');
-    });    function testChannel(index, event) {
+        
+        // 检查是否有正在进行的测试
+        checkTestProgress();
+    });
+    
+    // 检查测试进度
+    function checkTestProgress() {
+        $.ajax({
+            url: '{{ url_for("get_test_progress") }}',
+            type: 'GET',
+            success: function(response) {
+                if (response.success) {
+                    updateProgressBar(response.progress);
+                }
+            },
+            error: function() {
+                console.error('获取进度信息失败');
+            }
+        });
+    }
+    
+    // 开始定期检查进度
+    function startProgressCheck() {
+        // 清除可能存在的定时器
+        if (progressTimer) {
+            clearInterval(progressTimer);
+        }
+        
+        // 立即检查一次
+        checkTestProgress();
+        
+        // 设置3秒检查一次进度
+        progressTimer = setInterval(checkTestProgress, 3000);
+    }
+    
+    // 更新进度条
+    function updateProgressBar(progress) {
+        if (!progress.is_testing && progress.total === 0) {
+            // 没有测试在进行
+            $('#progressContainer').hide();
+            if (progressTimer) {
+                clearInterval(progressTimer);
+                progressTimer = null;
+            }
+            return;
+        }
+        
+        // 显示进度条
+        $('#progressContainer').show();
+        
+        // 计算完成百分比
+        const percent = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
+        
+        // 更新进度条
+        $('#progressBar').css('width', percent + '%').attr('aria-valuenow', percent).text(percent + '%');
+        
+        // 更新状态文本
+        $('#progressStatus').html(
+            `测试进度: ${progress.completed}/${progress.total} ` +
+            `(在线: <span class="text-success">${progress.online}</span>, ` +
+            `离线: <span class="text-danger">${progress.offline}</span>)`
+        );
+        
+        // 如果测试完成，停止定时器
+        if (!progress.is_testing && progress.completed >= progress.total && progress.total > 0) {
+            if (progressTimer) {
+                clearInterval(progressTimer);
+                progressTimer = null;
+            }
+            
+            // 显示完成消息
+            setTimeout(function() {
+                alert('所有频道测试完成！');
+                location.reload(); // 刷新页面以显示最新结果
+            }, 1000);
+        }
+    }
+    
+    function testChannel(index, event) {
         const button = event.target.closest('button');
         button.disabled = true;
         button.innerHTML = '<i class="bi bi-hourglass-split"></i>';
@@ -188,6 +282,14 @@
             return;
         }
         
+        // 显示进度条
+        $('#progressContainer').show();
+        $('#progressBar').css('width', '0%').attr('aria-valuenow', 0).text('0%');
+        $('#progressStatus').text('正在准备测试...');
+        
+        // 启动自动刷新
+        startProgressCheck();
+        
         const button = event.target.closest('button');
         button.disabled = true;
         button.innerHTML = '<i class="bi bi-hourglass-split"></i> 测试中...';
@@ -197,13 +299,18 @@
             type: 'POST',
             success: function(response) {
                 if (response.success) {
-                    alert('测试任务已启动，请稍后刷新页面查看结果');
+                    if (response.progress) {
+                        // 如果已经在测试中，立即更新进度
+                        updateProgressBar(response.progress);
+                    }
                 } else {
-                    alert('启动测试任务失败: ' + response.message);
+                    alert('测试失败: ' + response.message);
+                    $('#progressContainer').hide();
                 }
             },
             error: function() {
                 alert('请求失败，请稍后重试');
+                $('#progressContainer').hide();
             },
             complete: function() {
                 setTimeout(function() {

@@ -35,7 +35,7 @@ class UpdateScheduler:
             self.scheduler.shutdown()
             logger.info("调度器已关闭")
     
-    def add_interval_job(self, job_id, func, hours=24, minutes=0, seconds=0, args=None, kwargs=None):
+    def add_interval_job(self, job_id, func, hours=24, minutes=0, seconds=0, args=None, kwargs=None, run_immediately=True):
         """添加间隔任务
         
         Args:
@@ -46,6 +46,7 @@ class UpdateScheduler:
             seconds: 间隔秒数
             args: 函数参数
             kwargs: 函数关键字参数
+            run_immediately: 是否立即执行一次，默认为True
             
         Returns:
             bool: 是否成功
@@ -55,16 +56,24 @@ class UpdateScheduler:
         
         # 添加新任务
         try:
+            # 设置下次运行时间
+            next_run_time = datetime.now() if run_immediately else None
+            
             job = self.scheduler.add_job(
                 func=func,
                 trigger=IntervalTrigger(hours=hours, minutes=minutes, seconds=seconds),
                 id=job_id,
                 args=args or (),
                 kwargs=kwargs or {},
-                next_run_time=datetime.now()  # 立即执行一次
+                next_run_time=next_run_time  # 根据参数决定是否立即执行
             )
             self.jobs[job_id] = job
-            logger.info(f"已添加间隔任务: {job_id}, 间隔: {hours}小时 {minutes}分钟 {seconds}秒")
+            
+            if run_immediately:
+                logger.info(f"已添加间隔任务: {job_id}, 间隔: {hours}小时 {minutes}分钟 {seconds}秒, 立即执行一次")
+            else:
+                logger.info(f"已添加间隔任务: {job_id}, 间隔: {hours}小时 {minutes}分钟 {seconds}秒, 等待下次执行时间")
+                
             return True
         except Exception as e:
             logger.error(f"添加间隔任务失败: {str(e)}")
