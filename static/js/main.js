@@ -33,7 +33,6 @@ function updateTestProgress() {    fetch('/channels/test-progress')
                             开始时间: ${progress.start_time}
                         `;
                         // 仅在测试进行中继续更新
-                        setTimeout(updateTestProgress, 1000);
                     }
                 }
             }
@@ -170,4 +169,25 @@ function validateForm(formId) {
         return isValid;
     }
     return true;
+}
+
+function copyApiUrl() {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(window.location.href)
+      .then(() => {
+        alert("地址已复制到剪贴板！");
+      })
+      .catch(err => {
+        console.error('复制失败: ', err);
+        alert("复制失败，请手动复制地址。");
+      });
+  } else {
+    const tempInput = document.createElement("input");
+    tempInput.value = window.location.href;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    document.execCommand("copy");
+    document.body.removeChild(tempInput);
+    alert("地址已复制到剪贴板！");
+  }
 }
