@@ -276,7 +276,9 @@
             type: 'GET',
             success: function(response) {
                 if (response.success) {
-                    updateProgressBar(response.progress);
+                    if (response.progress.is_testing || (!response.progress.is_testing && response.progress.completed == response.progress.total && response.progress.total > 0)) {
+                        updateProgressBar(response.progress);
+                    }
                 }
             },
             error: function() {
@@ -287,16 +289,6 @@
     
     // 更新进度条
     function updateProgressBar(progress) {
-        if (!progress.is_testing && progress.total === 0) {
-            // 没有测试在进行
-            $('#progressContainer').hide();
-            if (progressTimer) {
-                clearInterval(progressTimer);
-                progressTimer = null;
-            }
-            return;
-        }
-        
         // 显示进度条
         $('#progressContainer').show();
         
@@ -313,7 +305,7 @@
             `离线: <span class="text-danger">${progress.offline}</span>)`
         );
         
-        // 如果测试完成，停止定时器并刷新页面
+        // 如果测试完成，停止定时器并显示完成信息
         if (!progress.is_testing && progress.completed >= progress.total && progress.total > 0) {
             if (progressTimer) {
                 clearInterval(progressTimer);
@@ -326,11 +318,6 @@
                 `在线: <span class="text-success">${progress.online}</span>, ` +
                 `离线: <span class="text-danger">${progress.offline}</span>`
             );
-            
-            // 3秒后刷新页面
-            setTimeout(function() {
-                location.reload();
-            }, 3000);
         }
     }
 </script>

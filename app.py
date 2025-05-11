@@ -121,15 +121,17 @@ def test_streams():
     updated_channels = stream_tester.batch_test(channels, test_all_sources=config.test_all_sources)
     
     # 更新测试进度
-    test_progress['completed'] = len(updated_channels)
-    test_progress['online'] = sum(1 for ch in updated_channels if 'test_results' in ch and ch['test_results'].get('status') == 'online')
-    test_progress['offline'] = sum(1 for ch in updated_channels if 'test_results' in ch and ch['test_results'].get('status') == 'offline')
+    # test_progress['completed'] = len(updated_channels)
+    # test_progress['online'] = sum(1 for ch in updated_channels if 'test_results' in ch and ch['test_results'].get('status') == 'online')
+    # test_progress['offline'] = sum(1 for ch in updated_channels if 'test_results' in ch and ch['test_results'].get('status') == 'offline')
     
     # 保存测试结果
     channel_aggregator.save_channels()
     
     # 测试完成，更新状态
     test_progress['is_testing'] = False
+    app.logger.info("测试已完成!")
+    app.logger.info(f"测试完成，test_progress: {test_progress}")
     
     # 保存最终测试结果
     channel_aggregator.save_channels()

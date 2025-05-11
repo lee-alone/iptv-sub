@@ -245,10 +245,11 @@
             }
             
             // 显示完成消息
-            setTimeout(function() {
-                alert('所有频道测试完成！');
-                location.reload(); // 刷新页面以显示最新结果
-            }, 1000);
+            $('#progressStatus').html(
+                `<strong>测试完成!</strong> 总计: ${progress.total}, ` +
+                `在线: <span class="text-success">${progress.online}</span>, ` +
+                `离线: <span class="text-danger">${progress.offline}</span>`
+            );
         }
     }
     

@@ -139,38 +139,39 @@ class StreamTester:
                              for i, url, url_type in test_tasks}
             
             # 处理测试结果
-            for future in as_completed(future_to_task):
-                i, url, url_type = future_to_task[future]
-                try:
-                    is_working, result = future.result()
-                    self._update_test_result(channels[i], url, url_type, is_working, result)
+            try:
+                for future in as_completed(future_to_task):
+                    i, url, url_type = future_to_task[future]
+                    try:
+                        is_working, result = future.result()
+                        self._update_test_result(channels[i], url, url_type, is_working, result)
+                    except Exception as e:
+                        logger.exception(f"Error testing {url}: {e}")
                     
-                    # 更新测试进度
-                    if url_type == 'main':  # 只在测试主URL时更新计数
-                        completed_count += 1
-                        
-                        # 更新在线/离线计数
-                        if channels[i]['test_results']['status'] == 'online':
-                            online_count += 1
-                        elif channels[i]['test_results']['status'] == 'offline':
-                            offline_count += 1
-                        
-                        # 更新全局测试进度（如果存在）
-                        if test_progress is not None:
-                            test_progress['completed'] = completed_count
-                            test_progress['online'] = online_count
-                            test_progress['offline'] = offline_count
-                            test_progress['total'] = len(channels)  # 确保总数正确
-                        
-                        # 每10个频道记录一次日志
-                        if completed_count % 10 == 0:
-                            logger.info(f"测试进度: {completed_count}/{len(channels)} (在线: {online_count}, 离线: {offline_count})")
-                            
-                        # 如果所有频道都已测试完成，记录一条完成日志
-                        if completed_count >= len(channels):
-                            logger.info(f"所有频道测试完成! 总计: {len(channels)}, 在线: {online_count}, 离线: {offline_count}")
-                except Exception as e:
-                    logger.error(f"测试任务异常: {str(e)}")
+                    completed_count += 1
+
+                    # 更新在线/离线计数
+                    if channels[i]['test_results']['status'] == 'online':
+                        online_count += 1
+                    elif channels[i]['test_results']['status'] == 'offline':
+                        offline_count += 1
+
+                    # 更新全局测试进度（如果存在）
+                    if test_progress is not None:
+                        test_progress['completed'] = completed_count
+                        test_progress['online'] = online_count
+                        test_progress['offline'] = offline_count
+                        test_progress['total'] = len(channels)  # 确保总数正确
+
+                    # 每10个频道记录一次日志
+                    if completed_count % 10 == 0:
+                        logger.info(f"测试进度: {completed_count}/{len(channels)} (在线: {online_count}, 离线: {offline_count})")
+
+                    # 如果所有频道都已测试完成，记录一条完成日志
+                    if completed_count >= len(channels):
+                        logger.info(f"所有频道测试完成! 总计: {len(channels)}, 在线: {online_count}, 离线: {offline_count}")
+            except Exception as e:
+                logger.exception(f"测试任务异常: {str(e)}")
         
         logger.info("批量测试完成")
         return channels
