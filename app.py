@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 """
 IPTV M3U 聚合软件
@@ -71,17 +72,18 @@ def update_subscriptions():
     all_channels = []
     
     for sub in subscriptions:
+        # 只处理启用的订阅源
+        if not sub.get('enabled', True):
+            logger.info(f"跳过未启用的订阅源: {sub['url']}")
+            continue
         url = sub['url']
         logger.info(f"正在更新订阅源: {url}")
-        
         # 抓取M3U文件
         success, content = m3u_parser.fetch_m3u(url)
-        
         if success:
             # 解析频道
             channels = m3u_parser.parse_m3u(content, source_url=url)
             all_channels.extend(channels)
-            
             # 更新订阅源状态
             subscription_manager.update_subscription_status(
                 url, 'active', channel_count=len(channels))
@@ -90,13 +92,11 @@ def update_subscriptions():
             # 更新订阅源状态为失败
             subscription_manager.update_subscription_status(url, 'failed')
             logger.error(f"订阅源 {url} 更新失败: {content}")
-    
     # 聚合频道
     if all_channels:
         total, added, updated = channel_aggregator.aggregate_channels(
             all_channels, match_by=config.match_by, similarity_threshold=config.similarity_threshold)
         logger.info(f"频道聚合完成: 总计 {total} 个频道，新增 {added} 个，更新 {updated} 个")
-    
     return True
 
 # 测试流函数
@@ -169,19 +169,19 @@ def init_scheduler():
 def index():
     """首页"""
     subscriptions = subscription_manager.get_all_subscriptions()
+    # 只统计启用的订阅源
+    enabled_subs = [sub for sub in subscriptions if sub.get('enabled', True)]
     channels = channel_aggregator.get_all_channels()
     groups = channel_aggregator.get_channel_groups()
-    
-    # 统计信息
+    # 直接统计所有频道，保证主页频道状态正常显示
     stats = {
-        'total_subscriptions': len(subscriptions),
+        'total_subscriptions': len(enabled_subs),
         'total_channels': len(channels),
-        'total_groups': len(groups),
+        'total_groups': len(set(ch.get('group_title') for ch in channels if ch.get('group_title'))),
         'online_channels': sum(1 for ch in channels if 'test_results' in ch and ch['test_results'].get('status') == 'online'),
         'offline_channels': sum(1 for ch in channels if 'test_results' in ch and ch['test_results'].get('status') == 'offline'),
         'untested_channels': sum(1 for ch in channels if 'test_results' not in ch or ch['test_results'].get('status') == 'untested')
     }
-    
     return render_template('index.html', 
                            subscriptions=subscriptions, 
                            channels=channels, 
@@ -202,28 +202,25 @@ def add_subscription():
     if request.method == 'POST':
         url = request.form.get('url', '').strip()
         name = request.form.get('name', '').strip()
-        
+        enabled = request.form.get('enabled') == 'on'
         if url:
-            success, message = subscription_manager.add_subscription(url, name)
+            success, message = subscription_manager.add_subscription(url, name, enabled)
             if success:
                 # 清空现有频道数据
                 logger.info("清空现有频道数据")
                 channel_aggregator.channels = []
                 channel_aggregator.save_channels()
-                
                 # 立即更新新添加的订阅源
                 success, content = m3u_parser.fetch_m3u(url)
                 if success:
                     channels = m3u_parser.parse_m3u(content, source_url=url)
                     channel_aggregator.aggregate_channels(channels)
                     subscription_manager.update_subscription_status(url, 'active', channel_count=len(channels))
-                
                 return redirect(url_for('subscription_list'))
             else:
                 return render_template('add_subscription.html', error=message)
         else:
             return render_template('add_subscription.html', error="URL不能为空")
-    
     return render_template('add_subscription.html')
 
 # 路由：删除订阅源
@@ -245,9 +242,9 @@ def edit_subscription(url):
     if request.method == 'POST':
         new_url = request.form.get('url', '').strip()
         new_name = request.form.get('name', '').strip()
-        
+        enabled = request.form.get('enabled') == 'on'
         if new_url:
-            success, message = subscription_manager.update_subscription(url, new_url, new_name)
+            success, message = subscription_manager.update_subscription(url, new_url, new_name, enabled)
             if success:
                 return redirect(url_for('subscription_list'))
             else:
@@ -258,7 +255,6 @@ def edit_subscription(url):
             return render_template('edit_subscription.html', 
                                    subscription=subscription, 
                                    error="URL不能为空")
-    
     return render_template('edit_subscription.html', subscription=subscription)
 
 # 路由：频道列表
@@ -482,6 +478,23 @@ def settings():
         return redirect(url_for('settings'))
     
     return render_template('settings.html', config=config)
+
+# 频道状态统计接口，放在所有初始化和路由之后
+@app.route('/channels/stats', methods=['GET'])
+def get_channel_stats():
+    """获取频道状态统计信息"""
+    subscriptions = subscription_manager.get_all_subscriptions()
+    enabled_subs = [sub for sub in subscriptions if sub.get('enabled', True)]
+    channels = channel_aggregator.get_all_channels()
+    stats = {
+        'total_subscriptions': len(enabled_subs),
+        'total_channels': len(channels),
+        'total_groups': len(set(ch.get('group_title') for ch in channels if ch.get('group_title'))),
+        'online_channels': sum(1 for ch in channels if 'test_results' in ch and ch['test_results'].get('status') == 'online'),
+        'offline_channels': sum(1 for ch in channels if 'test_results' in ch and ch['test_results'].get('status') == 'offline'),
+        'untested_channels': sum(1 for ch in channels if 'test_results' not in ch or ch['test_results'].get('status') == 'untested')
+    }
+    return jsonify({'success': True, 'stats': stats})
 
 # 启动应用
 if __name__ == '__main__':

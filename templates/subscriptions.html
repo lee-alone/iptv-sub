@@ -20,6 +20,7 @@
                         <th>URL</th>
                         <th>频道数</th>
                         <th>状态</th>
+                        <th>启用</th>
                         <th>上次更新</th>
                         <th>操作</th>
                     </tr>
@@ -41,6 +42,13 @@
                             <span class="badge bg-danger">失败</span>
                             {% else %}
                             <span class="badge bg-secondary">未知</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if sub.enabled is not defined or sub.enabled %}
+                                <span class="badge bg-success">启用</span>
+                            {% else %}
+                                <span class="badge bg-secondary">禁用</span>
                             {% endif %}
                         </td>
                         <td>{{ sub.last_updated or '未更新' }}</td>

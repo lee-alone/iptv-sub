@@ -29,6 +29,10 @@
                 <div class="form-text">输入有效的M3U文件URL，必须以http://或https://开头，以.m3u或.m3u8结尾</div>
             </div>
             
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="enabled" name="enabled" {% if subscription.enabled is not defined or subscription.enabled %}checked{% endif %}>
+                <label class="form-check-label" for="enabled">启用此订阅源</label>
+            </div>
             <div class="d-flex justify-content-between">
                 <a href="{{ url_for('subscription_list') }}" class="btn btn-secondary">
                     <i class="bi bi-arrow-left"></i> 返回

@@ -83,7 +83,7 @@ class SubscriptionManager:
         
         return True, ""
     
-    def add_subscription(self, url, name=""):
+    def add_subscription(self, url, name="", enabled=True):
         """添加新的订阅源
         
         Args:
@@ -110,7 +110,8 @@ class SubscriptionManager:
             'added_at': datetime.now().isoformat(),
             'last_updated': None,
             'channel_count': 0,
-            'status': 'active'
+            'status': 'active',
+            'enabled': enabled
         }
         
         # 添加到列表并保存
@@ -144,7 +145,7 @@ class SubscriptionManager:
         else:
             return False, "未找到指定的订阅源"
     
-    def update_subscription(self, old_url, new_url, new_name=None):
+    def update_subscription(self, old_url, new_url, new_name=None, enabled=None):
         """更新订阅源信息
         
         Args:
@@ -180,6 +181,8 @@ class SubscriptionManager:
         self.subscriptions[i]['url'] = new_url
         if new_name is not None:
             self.subscriptions[i]['name'] = new_name
+        if enabled is not None:
+            self.subscriptions[i]['enabled'] = enabled
         
         # 保存更改
         if self.save_subscriptions():

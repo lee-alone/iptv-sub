@@ -84,6 +84,7 @@
                                 <th>名称</th>
                                 <th>频道数</th>
                                 <th>状态</th>
+                                <th>启用</th>
                                 <th>上次更新</th>
                             </tr>
                         </thead>
@@ -99,6 +100,13 @@
                                     <span class="badge bg-danger">失败</span>
                                     {% else %}
                                     <span class="badge bg-secondary">未知</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if sub.enabled is not defined or sub.enabled %}
+                                        <span class="badge bg-success">启用</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">禁用</span>
                                     {% endif %}
                                 </td>
                                 <td>{{ sub.last_updated or '未更新' }}</td>
@@ -129,7 +137,7 @@
                     <div class="col-md-4 mb-3">
                         <div class="card bg-success text-white">
                             <div class="card-body text-center">
-                                <h3 class="card-title">{{ stats.online_channels }}</h3>
+                                <h3 class="card-title" id="stat-online">{{ stats.online_channels }}</h3>
                                 <p class="card-text">在线</p>
                             </div>
                         </div>
@@ -137,7 +145,7 @@
                     <div class="col-md-4 mb-3">
                         <div class="card bg-danger text-white">
                             <div class="card-body text-center">
-                                <h3 class="card-title">{{ stats.offline_channels }}</h3>
+                                <h3 class="card-title" id="stat-offline">{{ stats.offline_channels }}</h3>
                                 <p class="card-text">离线</p>
                             </div>
                         </div>
@@ -145,11 +153,29 @@
                     <div class="col-md-4 mb-3">
                         <div class="card bg-secondary text-white">
                             <div class="card-body text-center">
-                                <h3 class="card-title">{{ stats.untested_channels }}</h3>
+                                <h3 class="card-title" id="stat-untested">{{ stats.untested_channels }}</h3>
                                 <p class="card-text">未测试</p>
                             </div>
                         </div>
                     </div>
+<script>
+    // 频道状态统计刷新函数
+    function updateChannelStats() {
+        fetch('/channels/stats')
+            .then(res => res.json())
+            .then(response => {
+                if (response.success && response.stats) {
+                    // 兼容页面上所有频道状态数字的刷新
+                    const online = document.getElementById('stat-online');
+                    const offline = document.getElementById('stat-offline');
+                    const untested = document.getElementById('stat-untested');
+                    if (online) online.textContent = response.stats.online_channels;
+                    if (offline) offline.textContent = response.stats.offline_channels;
+                    if (untested) untested.textContent = response.stats.untested_channels;
+                }
+            });
+    }
+</script>
                 </div>
                 
                 <div class="mt-3">
@@ -214,111 +240,78 @@
     let progressTimer = null;
     
     document.addEventListener('DOMContentLoaded', function() {
-        // 检查是否有正在进行的测试
-        checkTestProgress();
+        // 页面加载时自动检测后端进度
+        fetch('{{ url_for("get_test_progress") }}')
+            .then(res => res.json())
+            .then(response => {
+                if (response.success && response.progress) {
+                    // 如果有测试在进行或刚完成，自动显示进度条并启动轮询
+                    if (response.progress.is_testing || (response.progress.completed === response.progress.total && response.progress.total > 0)) {
+                        updateProgressBarCommon(response.progress);
+                        startProgressCheck();
+                    }
+                }
+            });
     });
     
     function testAllChannels() {
-        $('#testAllBtn').prop('disabled', true).html('<i class="bi bi-lightning"></i> 测试中...');
-        
-        // 显示进度条
-        $('#progressContainer').show();
-        $('#progressBar').css('width', '0%').attr('aria-valuenow', 0).text('0%');
-        $('#progressStatus').text('正在准备测试...');
-        
-        // 启动自动刷新
+        const testAllBtn = document.getElementById('testAllBtn');
+        if (testAllBtn) {
+            testAllBtn.disabled = true;
+            testAllBtn.innerHTML = '<i class="bi bi-lightning"></i> 测试中...';
+        }
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressStatus = document.getElementById('progressStatus');
+        if (progressContainer && progressBar && progressStatus) {
+            progressContainer.style.display = '';
+            progressBar.style.width = '0%';
+            progressBar.setAttribute('aria-valuenow', 0);
+            progressBar.textContent = '0%';
+            progressStatus.textContent = '正在准备测试...';
+        }
         startProgressCheck();
-        
-        $.ajax({
-            url: '{{ url_for("test_all_channels") }}',
-            type: 'POST',
-            success: function(response) {
+        fetch('{{ url_for("test_all_channels") }}', {method: 'POST'})
+            .then(res => res.json())
+            .then(response => {
                 if (response.success) {
                     if (response.progress) {
-                        // 如果已经在测试中，立即更新进度
-                        updateProgressBar(response.progress);
+                        updateProgressBarCommon(response.progress);
                     }
                 } else {
                     alert('测试失败: ' + response.message);
-                    $('#progressContainer').hide();
+                    if (progressContainer) progressContainer.style.display = 'none';
                 }
-            },
-            error: function() {
+            })
+            .catch(() => {
                 alert('请求失败，请稍后重试');
-                $('#progressContainer').hide();
-            },
-            complete: function() {
-                setTimeout(function() {
-                    $('#testAllBtn').prop('disabled', false).html('<i class="bi bi-lightning"></i> 测试所有频道');
-                }, 3000);
-            }
-        });
+                if (progressContainer) progressContainer.style.display = 'none';
+            });
     }
-    
-    // 开始定时检查进度
+
     function startProgressCheck() {
-        // 清除可能存在的定时器
-        if (progressTimer) {
-            clearInterval(progressTimer);
+        if (window.progressTimer) {
+            clearInterval(window.progressTimer);
         }
-        
-        // 立即检查一次
         checkTestProgress();
-        
-        // 设置3秒检查一次进度
-        progressTimer = setInterval(checkTestProgress, 3000);
+        window.progressTimer = setInterval(checkTestProgress, 3000);
     }
-    
-    // 检查测试进度
+
     function checkTestProgress() {
-        $.ajax({
-            url: '{{ url_for("get_test_progress") }}',
-            type: 'GET',
-            success: function(response) {
+        fetch('{{ url_for("get_test_progress") }}')
+            .then(res => res.json())
+            .then(response => {
                 if (response.success) {
                     if (response.progress.is_testing || (!response.progress.is_testing && response.progress.completed == response.progress.total && response.progress.total > 0)) {
-                        updateProgressBar(response.progress);
+                        updateProgressBarCommon(response.progress);
                     }
                 }
-            },
-            error: function() {
+                // 每次轮询都刷新频道状态
+                updateChannelStats();
+            })
+            .catch(() => {
                 console.error('获取进度信息失败');
-            }
-        });
-    }
-    
-    // 更新进度条
-    function updateProgressBar(progress) {
-        // 显示进度条
-        $('#progressContainer').show();
-        
-        // 计算完成百分比
-        const percent = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
-        
-        // 更新进度条
-        $('#progressBar').css('width', percent + '%').attr('aria-valuenow', percent).text(percent + '%');
-        
-        // 更新状态文本
-        $('#progressStatus').html(
-            `测试进度: ${progress.completed}/${progress.total} ` +
-            `(在线: <span class="text-success">${progress.online}</span>, ` +
-            `离线: <span class="text-danger">${progress.offline}</span>)`
-        );
-        
-        // 如果测试完成，停止定时器并显示完成信息
-        if (!progress.is_testing && progress.completed >= progress.total && progress.total > 0) {
-            if (progressTimer) {
-                clearInterval(progressTimer);
-                progressTimer = null;
-            }
-            
-            // 显示完成消息
-            $('#progressStatus').html(
-                `<strong>测试完成!</strong> 总计: ${progress.total}, ` +
-                `在线: <span class="text-success">${progress.online}</span>, ` +
-                `离线: <span class="text-danger">${progress.offline}</span>`
-            );
-        }
+            });
     }
 </script>
 {% endblock %}

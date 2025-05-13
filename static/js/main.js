@@ -127,7 +127,8 @@ function startManualUpdate() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('更新任务已启动');
+            // 更新成功后自动刷新页面，确保频道状态数据同步
+            location.reload();
         } else {
             alert('启动更新失败: ' + data.message);
         }
@@ -172,22 +173,63 @@ function validateForm(formId) {
 }
 
 function copyApiUrl() {
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(window.location.href)
-      .then(() => {
-        alert("地址已复制到剪贴板！");
-      })
-      .catch(err => {
-        console.error('复制失败: ', err);
-        alert("复制失败，请手动复制地址。");
-      });
-  } else {
-    const tempInput = document.createElement("input");
-    tempInput.value = window.location.href;
-    document.body.appendChild(tempInput);
-    tempInput.select();
-    document.execCommand("copy");
-    document.body.removeChild(tempInput);
-    alert("地址已复制到剪贴板！");
+  const apiInput = document.getElementById('apiUrl');
+  if (!apiInput) {
+    alert('未找到地址输入框');
+    return;
   }
+  apiInput.select();
+  apiInput.setSelectionRange(0, 99999); // 兼容移动端
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(apiInput.value)
+        .then(() => {
+          alert("地址已复制到剪贴板！");
+        })
+        .catch(err => {
+          document.execCommand('copy');
+          alert("地址已复制到剪贴板！");
+        });
+    } else {
+      document.execCommand('copy');
+      alert("地址已复制到剪贴板！");
+    }
+  } catch (err) {
+    alert("复制失败，请手动复制地址。");
+  }
+}
+
+// 统一进度条和测试按钮逻辑，供 index.html、channels.html 等页面调用
+function updateProgressBarCommon(progress) {
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    const progressStatus = document.getElementById('progressStatus');
+    if (!progressContainer || !progressBar || !progressStatus) return;
+    progressContainer.style.display = '';
+    const percent = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
+    progressBar.style.width = percent + '%';
+    progressBar.setAttribute('aria-valuenow', percent);
+    progressBar.textContent = percent + '%';
+    progressStatus.innerHTML =
+        `测试进度: ${progress.completed}/${progress.total} ` +
+        `(在线: <span class="text-success">${progress.online}</span>, ` +
+        `离线: <span class="text-danger">${progress.offline}</span>)`;
+    if (!progress.is_testing && progress.completed >= progress.total && progress.total > 0) {
+        if (window.progressTimer) {
+            clearInterval(window.progressTimer);
+            window.progressTimer = null;
+        }
+        progressStatus.innerHTML =
+            `<strong>测试完成!</strong> 总计: ${progress.total}, ` +
+            `在线: <span class="text-success">${progress.online}</span>, ` +
+            `离线: <span class="text-danger">${progress.offline}</span>`;
+        setTimeout(() => {
+            progressContainer.style.display = 'none';
+            const testAllBtn = document.getElementById('testAllBtn');
+            if (testAllBtn) {
+                testAllBtn.disabled = false;
+                testAllBtn.innerHTML = '<i class="bi bi-lightning"></i> 测试所有频道';
+            }
+        }, 2000);
+    }
 }
