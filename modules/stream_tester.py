@@ -27,46 +27,70 @@ class StreamTester:
         self.timeout = timeout
         self.max_workers = max_workers
     def test_stream(self, url):
-        """测试单个流URL的可用性
-        
+        """测试单个流URL的可用性（支持m3u8分片检测）
         Args:
             url: 流媒体URL
-            
         Returns:
             tuple: (是否可用, 响应时间或错误消息)
         """
+        import re
+        from urllib.parse import urljoin
         start_time = time.time()
-        
         try:
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             }
-            
             # 对于特殊格式的URL（如斗鱼等），先尝试GET请求
             if 'douyu' in url or 'huya' in url or 'bilibili' in url:
                 response = requests.get(url, timeout=self.timeout, headers=headers, stream=True)
-                # 读取少量数据以验证流是否可用
                 for chunk in response.iter_content(chunk_size=1024):
-                    if chunk:  # 过滤掉保持活动的新块
+                    if chunk:
                         break
-            # 对于M3U8文件，尝试获取内容
+                elapsed = time.time() - start_time
+                if response.status_code == 200:
+                    return True, elapsed
+                else:
+                    return False, f"HTTP错误: {response.status_code}"
+            # 对于M3U8文件，下载并测试分片
             elif url.endswith('.m3u8'):
-                response = requests.get(url, timeout=self.timeout, headers=headers, stream=True)
-                # 读取少量数据以验证流是否可用
-                for chunk in response.iter_content(chunk_size=1024):
-                    if chunk:  # 过滤掉保持活动的新块
+                m3u8_resp = requests.get(url, timeout=self.timeout, headers=headers)
+                if m3u8_resp.status_code != 200:
+                    return False, f"M3U8下载失败: {m3u8_resp.status_code}"
+                m3u8_text = m3u8_resp.text
+                # 提取前3个ts分片
+                ts_urls = []
+                for line in m3u8_text.splitlines():
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    # 只取.ts结尾或无扩展名的分片
+                    if line.endswith('.ts') or re.match(r"^[^#?]+\.ts([?#].*)?$", line) or ('.ts' in line):
+                        ts_urls.append(urljoin(url, line))
+                    # 兼容部分无扩展名的分片
+                    elif re.match(r"^[^#]+$", line) and (not line.startswith('http')):
+                        ts_urls.append(urljoin(url, line))
+                    if len(ts_urls) >= 3:
                         break
+                if not ts_urls:
+                    return False, "未找到TS分片"
+                # 依次HEAD分片，只要有一个可用即判为可用
+                for ts_url in ts_urls:
+                    try:
+                        ts_resp = requests.head(ts_url, timeout=self.timeout, headers=headers, allow_redirects=True)
+                        if ts_resp.status_code == 200:
+                            elapsed = time.time() - start_time
+                            return True, elapsed
+                    except Exception as e:
+                        continue
+                return False, "TS分片不可访问"
             # 对于其他类型的流，使用HEAD请求
             else:
                 response = requests.head(url, timeout=self.timeout, headers=headers)
-            
-            elapsed = time.time() - start_time
-            
-            if response.status_code == 200:
-                return True, elapsed
-            else:
-                return False, f"HTTP错误: {response.status_code}"
-                
+                elapsed = time.time() - start_time
+                if response.status_code == 200:
+                    return True, elapsed
+                else:
+                    return False, f"HTTP错误: {response.status_code}"
         except requests.exceptions.Timeout:
             return False, "请求超时"
         except requests.exceptions.ConnectionError:
