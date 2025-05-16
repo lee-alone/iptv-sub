@@ -119,23 +119,27 @@ def test_streams():
     
     # 批量测试所有频道
     updated_channels = stream_tester.batch_test(channels, test_all_sources=config.test_all_sources)
-    
-    # 更新测试进度
-    # test_progress['completed'] = len(updated_channels)
-    # test_progress['online'] = sum(1 for ch in updated_channels if 'test_results' in ch and ch['test_results'].get('status') == 'online')
-    # test_progress['offline'] = sum(1 for ch in updated_channels if 'test_results' in ch and ch['test_results'].get('status') == 'offline')
-    
+
     # 保存测试结果
     channel_aggregator.save_channels()
-    
+
+    # 输出未被测试（test_results.status == 'untested' 或无 test_results 字段）的频道详细信息
+    untested_channels = [ch for ch in updated_channels if 'test_results' not in ch or ch['test_results'].get('status') == 'untested']
+    if untested_channels:
+        logger.warning(f"未被测试的频道数量: {len(untested_channels)}")
+        for ch in untested_channels:
+            logger.warning(f"未测试频道: name={ch.get('name')}, url={ch.get('url')}, group={ch.get('group_title')}, test_results={ch.get('test_results')}")
+    else:
+        logger.info("所有频道都已被测试")
+
     # 测试完成，更新状态
     test_progress['is_testing'] = False
     app.logger.info("测试已完成!")
     app.logger.info(f"测试完成，test_progress: {test_progress}")
-    
+
     # 保存最终测试结果
     channel_aggregator.save_channels()
-    
+
     logger.info("频道流测试完成")
     return True
 

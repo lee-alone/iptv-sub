@@ -65,56 +65,52 @@ class M3UParser:
             return False, f"获取M3U文件时出错: {str(e)}"
     
     def parse_m3u(self, content, source_url=None):
-        """解析M3U文件内容
-        
+        """解析M3U文件内容（增强：支持多地址分割并只保留合法流地址）
         Args:
             content: M3U文件内容
             source_url: 源URL（用于相对路径解析）
-            
         Returns:
             list: 解析后的频道列表
         """
         channels = []
         lines = content.splitlines()
-        
+        import re
         i = 0
         while i < len(lines):
             line = lines[i].strip()
-            
             # 跳过空行和注释
             if not line or (line.startswith('#') and not line.startswith('#EXTINF:')):
                 i += 1
                 continue
-            
             # 解析频道信息行
             if line.startswith('#EXTINF:'):
                 # 确保下一行存在且不是以#开头
                 if i + 1 < len(lines) and not lines[i + 1].strip().startswith('#'):
                     channel_info = self._parse_extinf(line)
-                    channel_url = lines[i + 1].strip()
-                    
-                    # 处理相对URL
-                    if source_url and not (channel_url.startswith('http://') or channel_url.startswith('https://')):
-                        channel_url = self._resolve_relative_url(source_url, channel_url)
-                    
-                    # 创建频道记录
-                    channel = {
-                        'name': channel_info.get('name', '未命名频道'),
-                        'url': channel_url,
-                        'tvg_id': channel_info.get('tvg-id', ''),
-                        'tvg_name': channel_info.get('tvg-name', ''),
-                        'tvg_logo': channel_info.get('tvg-logo', ''),
-                        'group_title': channel_info.get('group-title', '未分类'),
-                        'source': source_url
-                    }
-                    channels.append(channel)
-                    
+                    channel_url_line = lines[i + 1].strip()
+                    # 以 # ; 空格分割，过滤只保留合法流地址
+                    parts = re.split(r'[;#\s]+', channel_url_line)
+                    valid_urls = [p for p in parts if p.strip() and p.strip().lower().startswith(('http://', 'https://', 'rtmp://'))]
+                    # 处理相对URL（只对主url处理）
+                    if valid_urls and source_url and not (valid_urls[0].startswith('http://') or valid_urls[0].startswith('https://') or valid_urls[0].startswith('rtmp://')):
+                        valid_urls[0] = self._resolve_relative_url(source_url, valid_urls[0])
+                    if valid_urls:
+                        channel = {
+                            'name': channel_info.get('name', '未命名频道'),
+                            'url': valid_urls[0],
+                            'tvg_id': channel_info.get('tvg-id', ''),
+                            'tvg_name': channel_info.get('tvg-name', ''),
+                            'tvg_logo': channel_info.get('tvg-logo', ''),
+                            'group_title': channel_info.get('group-title', '未分类'),
+                            'source': source_url
+                        }
+                        if len(valid_urls) > 1:
+                            channel['sources'] = [{'url': u} for u in valid_urls[1:]]
+                        channels.append(channel)
                     # 跳过URL行
                     i += 2
                     continue
-            
             i += 1
-        
         logger.info(f"从M3U文件解析到 {len(channels)} 个频道")
         return channels
     
