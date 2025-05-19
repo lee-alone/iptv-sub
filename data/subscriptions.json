@@ -3,44 +3,53 @@
     "url": "https://raw.githubusercontent.com/hujingguang/ChinaIPTV/refs/heads/main/cnTV_AutoUpdate.m3u8",
     "name": "hujingguang",
     "added_at": "2025-05-05T10:07:19.520546",
-    "last_updated": "2025-05-16T09:29:35.097484",
+    "last_updated": "2025-05-19T17:14:30.786796",
     "channel_count": 50,
     "status": "active",
-    "enabled": false
+    "enabled": true
   },
   {
     "url": "https://raw.githubusercontent.com/zwc456baby/iptv_alive/refs/heads/master/live.m3u",
     "name": "zwc456baby",
     "added_at": "2025-05-05T10:08:12.491258",
-    "last_updated": "2025-05-16T09:29:36.244285",
-    "channel_count": 90,
+    "last_updated": "2025-05-19T17:14:31.685840",
+    "channel_count": 295,
     "status": "active",
-    "enabled": false
+    "enabled": true
   },
   {
     "url": "https://raw.githubusercontent.com/Guovin/iptv-api/gd/output/result.m3u",
     "name": "Guovin",
     "added_at": "2025-05-05T10:08:25.188123",
-    "last_updated": "2025-05-16T09:31:40.896326",
-    "channel_count": 2801,
+    "last_updated": "2025-05-19T17:14:33.759723",
+    "channel_count": 2714,
     "status": "active",
-    "enabled": false
+    "enabled": true
   },
   {
     "url": "https://raw.githubusercontent.com/vbskycn/iptv/refs/heads/master/tv/iptv4.m3u",
     "name": "vbskycn",
     "added_at": "2025-05-05T10:08:50.987082",
-    "last_updated": "2025-05-16T09:29:37.919543",
-    "channel_count": 816,
+    "last_updated": "2025-05-19T17:14:34.720394",
+    "channel_count": 847,
     "status": "active",
-    "enabled": false
+    "enabled": true
   },
   {
     "url": "https://raw.githubusercontent.com/8080713/iptv-api/refs/heads/main/output/result.m3u",
     "name": "8080713",
     "added_at": "2025-05-05T16:33:00.558538",
-    "last_updated": "2025-05-16T10:03:04.121819",
-    "channel_count": 1502,
+    "last_updated": "2025-05-19T17:14:35.860622",
+    "channel_count": 1534,
+    "status": "active",
+    "enabled": true
+  },
+  {
+    "url": "https://raw.githubusercontent.com/suxuang/myIPTV/refs/heads/main/ipv4.m3u",
+    "name": "suxuang",
+    "added_at": "2025-05-19T17:11:27.072856",
+    "last_updated": "2025-05-19T17:14:36.565280",
+    "channel_count": 954,
     "status": "active",
     "enabled": true
   }

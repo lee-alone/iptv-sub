@@ -97,6 +97,9 @@ def update_subscriptions():
         total, added, updated = channel_aggregator.aggregate_channels(
             all_channels, match_by=config.match_by, similarity_threshold=config.similarity_threshold)
         logger.info(f"频道聚合完成: 总计 {total} 个频道，新增 {added} 个，更新 {updated} 个")
+        # 聚合后自动测试所有新频道
+        logger.info("自动更新后，开始自动测试所有频道流...")
+        test_streams()
     return True
 
 # 测试流函数
