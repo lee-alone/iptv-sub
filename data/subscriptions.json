@@ -3,8 +3,8 @@
     "url": "https://raw.githubusercontent.com/hujingguang/ChinaIPTV/refs/heads/main/cnTV_AutoUpdate.m3u8",
     "name": "hujingguang",
     "added_at": "2025-05-05T10:07:19.520546",
-    "last_updated": "2025-05-19T17:14:30.786796",
-    "channel_count": 50,
+    "last_updated": "2025-10-29T17:17:32.540077",
+    "channel_count": 52,
     "status": "active",
     "enabled": true
   },
@@ -12,45 +12,36 @@
     "url": "https://raw.githubusercontent.com/zwc456baby/iptv_alive/refs/heads/master/live.m3u",
     "name": "zwc456baby",
     "added_at": "2025-05-05T10:08:12.491258",
-    "last_updated": "2025-05-19T17:14:31.685840",
-    "channel_count": 295,
+    "last_updated": "2025-10-29T16:04:13.464206",
+    "channel_count": 31,
     "status": "active",
-    "enabled": true
+    "enabled": false
   },
   {
     "url": "https://raw.githubusercontent.com/Guovin/iptv-api/gd/output/result.m3u",
     "name": "Guovin",
     "added_at": "2025-05-05T10:08:25.188123",
-    "last_updated": "2025-05-19T17:14:33.759723",
-    "channel_count": 2714,
+    "last_updated": "2025-10-29T16:57:08.703892",
+    "channel_count": 2946,
     "status": "active",
-    "enabled": true
+    "enabled": false
   },
   {
     "url": "https://raw.githubusercontent.com/vbskycn/iptv/refs/heads/master/tv/iptv4.m3u",
     "name": "vbskycn",
     "added_at": "2025-05-05T10:08:50.987082",
-    "last_updated": "2025-05-19T17:14:34.720394",
-    "channel_count": 847,
+    "last_updated": "2025-10-29T17:02:36.800146",
+    "channel_count": 688,
     "status": "active",
-    "enabled": true
-  },
-  {
-    "url": "https://raw.githubusercontent.com/8080713/iptv-api/refs/heads/main/output/result.m3u",
-    "name": "8080713",
-    "added_at": "2025-05-05T16:33:00.558538",
-    "last_updated": "2025-05-19T17:14:35.860622",
-    "channel_count": 1534,
-    "status": "active",
-    "enabled": true
+    "enabled": false
   },
   {
     "url": "https://raw.githubusercontent.com/suxuang/myIPTV/refs/heads/main/ipv4.m3u",
     "name": "suxuang",
     "added_at": "2025-05-19T17:11:27.072856",
-    "last_updated": "2025-05-19T17:14:36.565280",
-    "channel_count": 954,
+    "last_updated": "2025-10-29T16:04:17.400560",
+    "channel_count": 1347,
     "status": "active",
-    "enabled": true
+    "enabled": false
   }
 ]

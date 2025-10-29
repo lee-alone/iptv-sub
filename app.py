@@ -40,19 +40,24 @@ config = Config()
 subscription_manager = SubscriptionManager(data_dir=config.data_dir)
 m3u_parser = M3UParser(timeout=config.request_timeout)
 channel_aggregator = ChannelAggregator(data_dir=config.data_dir)
-stream_tester = StreamTester(timeout=config.stream_test_timeout, max_workers=config.max_test_workers)
+stream_tester = StreamTester(timeout=config.stream_test_timeout, max_workers=config.max_test_workers,
+                             deep_check=getattr(config, 'deep_check', True),
+                             loop_checks=getattr(config, 'loop_checks', 3),
+                             loop_interval=getattr(config, 'loop_interval', 4.0),
+                             segment_window=getattr(config, 'segment_window', 5))
 scheduler = UpdateScheduler()
 channel_exporter = ChannelExporter(data_dir=config.data_dir)
 
-# 全局变量：测试进度跟踪
-test_progress = {
-    'is_testing': False,
-    'total': 0,
-    'completed': 0,
-    'online': 0,
-    'offline': 0,
-    'start_time': None
-}
+# 进度跟踪已取消，不再注入到测试器
+
+# 在测试期间定期持久化，便于前端轮询读取到最新统计
+def _on_test_progress(channels, completed, online, offline):
+    try:
+        channel_aggregator.save_channels(silent=True)
+    except Exception as e:
+        logger.debug(f"保存频道进度失败: {e}")
+
+stream_tester.on_progress = _on_test_progress
 
 # 确保数据目录存在
 if not os.path.exists(config.data_dir):
@@ -105,20 +110,8 @@ def update_subscriptions():
 # 测试流函数
 def test_streams():
     """测试所有频道流"""
-    global test_progress
-    
     logger.info("开始测试频道流")
     channels = channel_aggregator.get_all_channels()
-    
-    # 初始化测试进度
-    test_progress = {
-        'is_testing': True,
-        'total': len(channels),
-        'completed': 0,
-        'online': 0,
-        'offline': 0,
-        'start_time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    }
     
     # 批量测试所有频道
     updated_channels = stream_tester.batch_test(channels, test_all_sources=config.test_all_sources)
@@ -135,10 +128,7 @@ def test_streams():
     else:
         logger.info("所有频道都已被测试")
 
-    # 测试完成，更新状态
-    test_progress['is_testing'] = False
     app.logger.info("测试已完成!")
-    app.logger.info(f"测试完成，test_progress: {test_progress}")
 
     # 保存最终测试结果
     channel_aggregator.save_channels()
@@ -193,7 +183,8 @@ def index():
                            subscriptions=subscriptions, 
                            channels=channels, 
                            groups=groups, 
-                           stats=stats)
+                           stats=stats,
+                           config=config)
 
 # 路由：订阅源管理
 @app.route('/subscriptions')
@@ -323,28 +314,11 @@ def test_channel(channel_id):
 @app.route('/channels/test-all', methods=['POST'])
 def test_all_channels():
     """批量测试所有频道"""
-    global test_progress
-    
-    # 如果已经在测试中，返回当前进度
-    if test_progress['is_testing']:
-        return jsonify({
-            'success': True, 
-            'message': '测试任务已在进行中',
-            'progress': test_progress
-        })
-    
     # 启动测试任务
     scheduler.add_interval_job('test_streams_once', test_streams, seconds=1, run_immediately=True)
     return jsonify({'success': True, 'message': '测试任务已启动'})
 
-# 路由：获取测试进度
-@app.route('/channels/test-progress', methods=['GET'])
-def get_test_progress():
-    """获取测试进度"""
-    return jsonify({
-        'success': True,
-        'progress': test_progress
-    })
+# 进度接口已移除
 
 # 路由：手动更新订阅
 @app.route('/update', methods=['POST'])
@@ -458,6 +432,20 @@ def settings():
         similarity_threshold = float(request.form.get('similarity_threshold', 85))
         config.similarity_threshold = similarity_threshold / 100
         config.test_all_sources = request.form.get('test_all_sources') == 'on'
+        # 深度检测设置
+        config.deep_check = request.form.get('deep_check') == 'on'
+        try:
+            config.loop_checks = max(2, int(request.form.get('loop_checks', config.loop_checks)))
+        except Exception:
+            config.loop_checks = 3
+        try:
+            config.loop_interval = max(1.0, float(request.form.get('loop_interval', config.loop_interval)))
+        except Exception:
+            config.loop_interval = 4.0
+        try:
+            config.segment_window = max(1, int(request.form.get('segment_window', config.segment_window)))
+        except Exception:
+            config.segment_window = 5
         
         # 保存配置
         config.save_config()
@@ -481,6 +469,14 @@ def settings():
             )
         else:
             scheduler.remove_job('test_streams')
+
+        # 更新实例化的流测试器参数
+        stream_tester.timeout = config.stream_test_timeout
+        stream_tester.max_workers = config.max_test_workers
+        stream_tester.deep_check = config.deep_check
+        stream_tester.loop_checks = config.loop_checks
+        stream_tester.loop_interval = config.loop_interval
+        stream_tester.segment_window = config.segment_window
         
         return redirect(url_for('settings'))
     
@@ -492,7 +488,14 @@ def get_channel_stats():
     """获取频道状态统计信息"""
     subscriptions = subscription_manager.get_all_subscriptions()
     enabled_subs = [sub for sub in subscriptions if sub.get('enabled', True)]
-    channels = channel_aggregator.get_all_channels()
+    # 为避免多进程/线程时内存不同步，这里优先从文件读取最新数据
+    channels = []
+    try:
+        with open(os.path.join(config.data_dir, 'channels.json'), 'r', encoding='utf-8') as f:
+            channels = json.load(f)
+    except Exception:
+        # 回退到内存
+        channels = channel_aggregator.get_all_channels()
     stats = {
         'total_subscriptions': len(enabled_subs),
         'total_channels': len(channels),
@@ -505,4 +508,5 @@ def get_channel_stats():
 
 # 启动应用
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=80)
+    port = int(os.environ.get('PORT', '5000'))
+    app.run(debug=True, host='0.0.0.0', port=port)

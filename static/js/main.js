@@ -1,44 +1,4 @@
-// 定期更新测试进度
-function updateTestProgress() {    fetch('/channels/test-progress')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const progress = data.progress;
-                const percent = (progress.completed / progress.total * 100).toFixed(1);
-                
-                // 更新进度条
-                const progressBar = document.getElementById('test-progress-bar');
-                if (progressBar) {
-                    progressBar.style.width = percent + '%';
-                    progressBar.textContent = `${percent}% (${progress.completed}/${progress.total})`;
-                }
-                
-                // 更新状态统计
-                const statsDiv = document.getElementById('test-stats');
-                if (statsDiv) {
-                    if (!data.progress.is_testing) {
-                        // 测试已完成，显示最终结果
-                        statsDiv.innerHTML = `
-                            测试完成！总计: ${progress.total} | 
-                            在线: ${progress.online} | 
-                            离线: ${progress.offline} | 
-                            开始时间: ${progress.start_time} |
-                            最后测试时间: ${formatDateTime(new Date())}
-                        `;
-                    } else {
-                        // 测试进行中，显示实时进度
-                        statsDiv.innerHTML = `
-                            在线: ${progress.online} | 
-                            离线: ${progress.offline} | 
-                            开始时间: ${progress.start_time}
-                        `;
-                        // 仅在测试进行中继续更新
-                    }
-                }
-            }
-        })
-        .catch(error => console.error('更新测试进度失败:', error));
-}
+// 进度条相关逻辑已移除
 
 // 删除订阅源确认
 function confirmDeleteSubscription(url) {
@@ -97,27 +57,7 @@ function testChannel(channelId) {
     .catch(error => console.error('测试频道失败:', error));
 }
 
-// 启动测试所有频道
-function startTestAll() {
-    fetch('/channels/test-all', {
-        method: 'POST'
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // 显示进度条
-            const progressSection = document.getElementById('test-progress-section');
-            if (progressSection) {
-                progressSection.style.display = 'block';
-            }
-            // 开始定期更新进度
-            updateTestProgress();
-        } else {
-            alert('启动测试失败: ' + data.message);
-        }
-    })
-    .catch(error => console.error('启动测试失败:', error));
-}
+// 启动测试所有频道逻辑改由各页面独立实现
 
 // 启动手动更新
 function startManualUpdate() {
@@ -138,11 +78,7 @@ function startManualUpdate() {
 
 // 页面加载完成后执行
 document.addEventListener('DOMContentLoaded', function() {
-    // 如果存在进度条，开始定期更新进度
-    const progressSection = document.getElementById('test-progress-section');
-    if (progressSection && progressSection.style.display !== 'none') {
-        updateTestProgress();
-    }
+    // 无全局进度条需要初始化
 });
 
 // 格式化日期时间
@@ -199,37 +135,4 @@ function copyApiUrl() {
   }
 }
 
-// 统一进度条和测试按钮逻辑，供 index.html、channels.html 等页面调用
-function updateProgressBarCommon(progress) {
-    const progressContainer = document.getElementById('progressContainer');
-    const progressBar = document.getElementById('progressBar');
-    const progressStatus = document.getElementById('progressStatus');
-    if (!progressContainer || !progressBar || !progressStatus) return;
-    progressContainer.style.display = '';
-    const percent = progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
-    progressBar.style.width = percent + '%';
-    progressBar.setAttribute('aria-valuenow', percent);
-    progressBar.textContent = percent + '%';
-    progressStatus.innerHTML =
-        `测试进度: ${progress.completed}/${progress.total} ` +
-        `(在线: <span class="text-success">${progress.online}</span>, ` +
-        `离线: <span class="text-danger">${progress.offline}</span>)`;
-    if (!progress.is_testing && progress.completed >= progress.total && progress.total > 0) {
-        if (window.progressTimer) {
-            clearInterval(window.progressTimer);
-            window.progressTimer = null;
-        }
-        progressStatus.innerHTML =
-            `<strong>测试完成!</strong> 总计: ${progress.total}, ` +
-            `在线: <span class="text-success">${progress.online}</span>, ` +
-            `离线: <span class="text-danger">${progress.offline}</span>`;
-        setTimeout(() => {
-            progressContainer.style.display = 'none';
-            const testAllBtn = document.getElementById('testAllBtn');
-            if (testAllBtn) {
-                testAllBtn.disabled = false;
-                testAllBtn.innerHTML = '<i class="bi bi-lightning"></i> 测试所有频道';
-            }
-        }, 2000);
-    }
-}
+// 统一进度条逻辑已移除

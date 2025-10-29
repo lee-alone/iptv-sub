@@ -38,6 +38,33 @@
                     <label class="form-check-label" for="test_all_sources">测试所有源URL</label>
                     <div class="form-text">启用后将测试频道的所有可用源</div>
                 </div>
+
+                <div class="mb-3">
+                    <h6 class="mt-3">高级：HLS 深度检测</h6>
+                    <div class="form-check mb-2">
+                        <input type="checkbox" class="form-check-input" id="deep_check" name="deep_check"
+                               {% if config.deep_check %}checked{% endif %}>
+                        <label class="form-check-label" for="deep_check">启用循环/停滞检测</label>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="loop_checks" class="form-label">检测次数</label>
+                            <input type="number" class="form-control" id="loop_checks" name="loop_checks" 
+                                   value="{{ config.loop_checks }}" min="2" max="10">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="loop_interval" class="form-label">检测间隔（秒）</label>
+                            <input type="number" step="0.5" class="form-control" id="loop_interval" name="loop_interval" 
+                                   value="{{ '%.1f'|format(config.loop_interval) }}" min="1" max="30">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="segment_window" class="form-label">分片窗口大小</label>
+                            <input type="number" class="form-control" id="segment_window" name="segment_window" 
+                                   value="{{ config.segment_window }}" min="1" max="10">
+                        </div>
+                    </div>
+                    <div class="form-text">多次抓取 m3u8，检测媒体序列/分片窗口/时间戳是否前进。</div>
+                </div>
             </div>
 
             <div class="mb-3">
@@ -79,10 +106,27 @@
     document.getElementById('enable_stream_test').addEventListener('change', function() {
         document.getElementById('test_interval_hours').disabled = !this.checked;
         document.getElementById('test_all_sources').disabled = !this.checked;
+        document.getElementById('deep_check').disabled = !this.checked;
+        document.getElementById('loop_checks').disabled = !this.checked || !document.getElementById('deep_check').checked;
+        document.getElementById('loop_interval').disabled = !this.checked || !document.getElementById('deep_check').checked;
+        document.getElementById('segment_window').disabled = !this.checked || !document.getElementById('deep_check').checked;
+    });
+
+    document.getElementById('deep_check').addEventListener('change', function() {
+        const enabled = document.getElementById('enable_stream_test').checked && this.checked;
+        document.getElementById('loop_checks').disabled = !enabled;
+        document.getElementById('loop_interval').disabled = !enabled;
+        document.getElementById('segment_window').disabled = !enabled;
     });
 
     // 初始化禁用状态
-    document.getElementById('test_interval_hours').disabled = !document.getElementById('enable_stream_test').checked;
-    document.getElementById('test_all_sources').disabled = !document.getElementById('enable_stream_test').checked;
+    const et = document.getElementById('enable_stream_test').checked;
+    document.getElementById('test_interval_hours').disabled = !et;
+    document.getElementById('test_all_sources').disabled = !et;
+    document.getElementById('deep_check').disabled = !et;
+    const dc = et && document.getElementById('deep_check').checked;
+    document.getElementById('loop_checks').disabled = !dc;
+    document.getElementById('loop_interval').disabled = !dc;
+    document.getElementById('segment_window').disabled = !dc;
 </script>
 {% endblock %}

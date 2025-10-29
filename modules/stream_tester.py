@@ -17,7 +17,8 @@ logger = logging.getLogger(__name__)
 class StreamTester:
     """流媒体测试器"""
     
-    def __init__(self, timeout=5, max_workers=10):
+    def __init__(self, timeout=5, max_workers=10, progress=None,
+                 deep_check=False, loop_checks=3, loop_interval=4.0, segment_window=5):
         """初始化测试器
         
         Args:
@@ -26,6 +27,15 @@ class StreamTester:
         """
         self.timeout = timeout
         self.max_workers = max_workers
+        # 可选的外部进度存储（dict），用于更新批量测试进度
+        self.progress = progress
+        # 深度检测（识别循环/停滞）参数
+        self.deep_check = deep_check
+        self.loop_checks = max(2, int(loop_checks))
+        self.loop_interval = float(loop_interval)
+        self.segment_window = max(1, int(segment_window))
+        # 进度回调：用于外部持久化或更新UI（可选）
+        self.on_progress = None
     def test_stream(self, url):
         """测试单个流URL的可用性（支持m3u8分片检测和rtmp协议）
         Args:
@@ -67,7 +77,7 @@ class StreamTester:
                 else:
                     return False, f"HTTP错误: {response.status_code}"
             # 对于M3U8文件，下载并测试分片
-            elif url.endswith('.m3u8'):
+            elif url.lower().endswith('.m3u8'):
                 m3u8_resp = requests.get(url, timeout=self.timeout, headers=headers)
                 if m3u8_resp.status_code != 200:
                     return False, f"M3U8下载失败: {m3u8_resp.status_code}"
@@ -88,16 +98,25 @@ class StreamTester:
                         break
                 if not ts_urls:
                     return False, "未找到TS分片"
-                # 依次HEAD分片，只要有一个可用即判为可用
+                # 依次HEAD分片，只要有一个可用即判为可用（初步在线判定）
+                head_ok = False
                 for ts_url in ts_urls:
                     try:
                         ts_resp = requests.head(ts_url, timeout=self.timeout, headers=headers, allow_redirects=True)
                         if ts_resp.status_code == 200:
-                            elapsed = time.time() - start_time
-                            return True, elapsed
-                    except Exception as e:
+                            head_ok = True
+                            break
+                    except Exception:
                         continue
-                return False, "TS分片不可访问"
+                if not head_ok:
+                    return False, "TS分片不可访问"
+
+                # 深度检测：多次抓取 playlist，检查是否前进
+                if self.deep_check:
+                    if not self._hls_progressing(url, headers):
+                        return False, "疑似循环/停滞的HLS播放列表"
+                elapsed = time.time() - start_time
+                return True, elapsed
             # 对于其他类型的流，使用HEAD请求
             else:
                 response = requests.head(url, timeout=self.timeout, headers=headers)
@@ -146,19 +165,10 @@ class StreamTester:
                     if isinstance(source, dict) and 'url' in source and source['url']:
                         test_tasks.append((i, source['url'], f"source_{j}"))
 
-        # 使用sys.modules动态查找test_progress变量，避免循环导入问题
-        import sys
-        test_progress = None
-        if 'app' in sys.modules and hasattr(sys.modules['app'], 'test_progress'):
-            test_progress = sys.modules['app'].test_progress
-        else:
-            for module_name, module in sys.modules.items():
-                if hasattr(module, 'test_progress'):
-                    test_progress = module.test_progress
-                    logger.info(f"从模块 {module_name} 获取到test_progress变量")
-                    break
+        # 使用依赖注入的进度存储
+        test_progress = self.progress
         if test_progress is None:
-            logger.warning("无法获取测试进度变量，将跳过进度更新")
+            logger.debug("未配置进度存储，跳过进度更新")
 
         completed_count = 0
         online_count = 0
@@ -193,6 +203,12 @@ class StreamTester:
 
                     if completed_count % 10 == 0:
                         logger.info(f"测试进度: {completed_count}/{len(channels)} (在线: {online_count}, 离线: {offline_count})")
+                        # 每10个持久化一次，方便前端轮询到最新数据
+                        try:
+                            if callable(self.on_progress):
+                                self.on_progress(channels, completed_count, online_count, offline_count)
+                        except Exception as e:
+                            logger.debug(f"on_progress 回调异常: {e}")
                 logger.info(f"所有频道测试完成! 总计: {len(channels)}, 在线: {online_count}, 离线: {offline_count}")
         except KeyboardInterrupt:
             logger.warning("检测任务被用户中断 (Ctrl+C)")
@@ -257,3 +273,73 @@ class StreamTester:
                 channel['test_results']['error'] = result
                 channel['test_results']['working_url'] = None
                 channel['test_results']['response_time'] = None
+
+    def _hls_progressing(self, playlist_url, headers):
+        """多次抓取HLS媒体播放列表，检查是否前进（避免循环/停滞）。
+        规则：
+        - EXT-X-MEDIA-SEQUENCE 递增，或
+        - 最后K个分片窗口发生变化，或
+        - EXT-X-PROGRAM-DATE-TIME 前进
+        满足任一则认为在前进。
+        """
+        import re
+        from urllib.parse import urljoin
+
+        def parse_signature(text):
+            media_seq = None
+            prog_time = None
+            segments = []
+            last_prog = None
+            for line in text.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                if line.startswith('#EXT-X-MEDIA-SEQUENCE'):
+                    try:
+                        media_seq = int(line.split(':', 1)[1])
+                    except Exception:
+                        pass
+                elif line.startswith('#EXT-X-PROGRAM-DATE-TIME'):
+                    prog_time = line.split(':', 1)[1].strip()
+                    last_prog = prog_time
+                elif not line.startswith('#'):
+                    # 分片行
+                    if line.endswith('.ts') or re.match(r"^[^#?]+\.ts([?#].*)?$", line) or ('.ts' in line) or re.match(r"^[^#]+$", line):
+                        segments.append(line)
+            # 只取最后K个分片
+            if len(segments) > self.segment_window:
+                window = tuple(segments[-self.segment_window:])
+            else:
+                window = tuple(segments)
+            return media_seq, window, last_prog
+
+        signatures = []
+        for i in range(self.loop_checks):
+            try:
+                resp = requests.get(playlist_url, timeout=self.timeout, headers=headers)
+                if resp.status_code != 200:
+                    return True  # 拉取失败不做阻断，交给外层状态
+                signatures.append(parse_signature(resp.text))
+            except Exception:
+                return True
+            if i < self.loop_checks - 1:
+                time.sleep(self.loop_interval)
+
+        # 判断是否存在前进
+        first = signatures[0]
+        progressed = False
+        for sig in signatures[1:]:
+            # 媒体序列递增
+            if first[0] is not None and sig[0] is not None and sig[0] > first[0]:
+                progressed = True
+                break
+            # 分片窗口变化
+            if sig[1] != first[1]:
+                progressed = True
+                break
+            # 时间戳变化
+            if sig[2] and first[2] and sig[2] != first[2]:
+                progressed = True
+                break
+
+        return progressed

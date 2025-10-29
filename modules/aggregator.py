@@ -48,12 +48,15 @@ class ChannelAggregator:
             logger.info("频道数据文件不存在，创建新的频道列表")
             self.channels = []
     
-    def save_channels(self):
+    def save_channels(self, silent=False):
         """保存频道列表到文件"""
         try:
             with open(self.channels_file, 'w', encoding='utf-8') as f:
                 json.dump(self.channels, f, ensure_ascii=False, indent=2)
-            logger.info(f"已保存 {len(self.channels)} 个频道")
+            if silent:
+                logger.debug(f"已保存 {len(self.channels)} 个频道")
+            else:
+                logger.info(f"已保存 {len(self.channels)} 个频道")
             return True
         except Exception as e:
             logger.error(f"保存频道数据时出错: {str(e)}")
@@ -112,6 +115,32 @@ class ChannelAggregator:
         Returns:
             dict: 匹配的频道，如果未找到则返回None
         """
+        # 1) 优先按URL完全一致去重（包括主url与sources中的url）
+        new_urls = set()
+        if 'url' in new_channel and new_channel['url']:
+            new_urls.add(new_channel['url'])
+        if isinstance(new_channel.get('sources'), list):
+            for s in new_channel['sources']:
+                u = s.get('url') if isinstance(s, dict) else None
+                if u:
+                    new_urls.add(u)
+
+        for channel in self.channels:
+            # 比较现有频道的所有已知URL
+            existing_urls = set()
+            if 'url' in channel and channel['url']:
+                existing_urls.add(channel['url'])
+            if isinstance(channel.get('sources'), list):
+                for s in channel['sources']:
+                    u = s.get('url') if isinstance(s, dict) else None
+                    if u:
+                        existing_urls.add(u)
+
+            # URL 完全相同则视为同一频道
+            if new_urls and existing_urls and (new_urls & existing_urls):
+                return channel
+
+        # 2) 其次按 tvg_id / 名称 规则匹配
         for channel in self.channels:
             # 按tvg_id匹配
             if match_by in ['tvg_id', 'both'] and new_channel['tvg_id'] and channel['tvg_id'] == new_channel['tvg_id']:

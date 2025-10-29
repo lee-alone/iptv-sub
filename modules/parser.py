@@ -8,7 +8,7 @@ M3U解析模块
 import re
 import requests
 import logging
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -162,12 +162,5 @@ class M3UParser:
         Returns:
             str: 解析后的完整URL
         """
-        parsed_base = urlparse(base_url)
-        base_path = '/'.join(parsed_base.path.split('/')[:-1]) + '/'
-        
-        if relative_url.startswith('/'):
-            # 绝对路径
-            return f"{parsed_base.scheme}://{parsed_base.netloc}{relative_url}"
-        else:
-            # 相对路径
-            return f"{parsed_base.scheme}://{parsed_base.netloc}{base_path}{relative_url}"
+        # 使用标准库的 urljoin 处理相对路径与 ../ 情况
+        return urljoin(base_url, relative_url)

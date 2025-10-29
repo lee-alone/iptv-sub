@@ -189,20 +189,7 @@
 </div>
 
 <div class="row">
-    <!-- 测试进度条 -->
-    <div id="progressContainer" class="col-md-12 mb-4" style="display: none;">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">频道测试进度</h5>
-                <div class="progress mb-2">
-                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
-                         role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" 
-                         style="width: 0%">0%</div>
-                </div>
-                <p id="progressStatus" class="card-text">准备测试...</p>
-            </div>
-        </div>
-    </div>
+    <!-- 进度条已移除 -->
     
     <div class="col-md-12 mb-4">
         <div class="card">
@@ -237,80 +224,60 @@
 
 {% block extra_js %}
 <script>
-    let progressTimer = null;
-    
-    document.addEventListener('DOMContentLoaded', function() {
-        // 页面加载时自动检测后端进度
-        fetch('{{ url_for("get_test_progress") }}')
-            .then(res => res.json())
-            .then(response => {
-                if (response.success && response.progress) {
-                    // 如果有测试在进行或刚完成，自动显示进度条并启动轮询
-                    if (response.progress.is_testing || (response.progress.completed === response.progress.total && response.progress.total > 0)) {
-                        updateProgressBarCommon(response.progress);
-                        startProgressCheck();
-                    }
-                }
-            });
-    });
-    
+    let statsTimer = null;
+
+    function startStatsAutoRefresh(durationMs = 60000, intervalMs = 3000) {
+        if (window.statsTimer) {
+            clearInterval(window.statsTimer);
+        }
+        // 立即刷新一次
+        updateChannelStats();
+        // 周期刷新
+        window.statsTimer = setInterval(updateChannelStats, intervalMs);
+        // 到时停止
+        setTimeout(() => {
+            if (window.statsTimer) {
+                clearInterval(window.statsTimer);
+                window.statsTimer = null;
+            }
+        }, durationMs);
+    }
+
     function testAllChannels() {
         const testAllBtn = document.getElementById('testAllBtn');
         if (testAllBtn) {
             testAllBtn.disabled = true;
             testAllBtn.innerHTML = '<i class="bi bi-lightning"></i> 测试中...';
         }
-        const progressContainer = document.getElementById('progressContainer');
-        const progressBar = document.getElementById('progressBar');
-        const progressStatus = document.getElementById('progressStatus');
-        if (progressContainer && progressBar && progressStatus) {
-            progressContainer.style.display = '';
-            progressBar.style.width = '0%';
-            progressBar.setAttribute('aria-valuenow', 0);
-            progressBar.textContent = '0%';
-            progressStatus.textContent = '正在准备测试...';
-        }
-        startProgressCheck();
+        // 估算持续时间：基于频道总数与并发/超时/深度检测参数
+        const total = {{ stats.total_channels }};
+        const workers = {{ config.max_test_workers }};
+        const timeoutSec = {{ config.stream_test_timeout }};
+        const deepCheck = {{ 'true' if config.deep_check else 'false' }};
+        const loopChecks = {{ config.loop_checks }};
+        const loopInterval = {{ '%.1f'|format(config.loop_interval) }};
+        const overheadSec = deepCheck ? (loopChecks * loopInterval) : 0;
+        const perItemSec = Math.max(timeoutSec + overheadSec, 2);
+        const batches = Math.max(1, Math.ceil(total / Math.max(1, workers)));
+        const estimateMs = Math.min(5 * 60 * 1000, Math.max(15 * 1000, Math.ceil(batches * perItemSec * 1000)));
+        // 启动自动刷新（每3秒一次，持续估算时长）
+        startStatsAutoRefresh(estimateMs, 3000);
         fetch('{{ url_for("test_all_channels") }}', {method: 'POST'})
             .then(res => res.json())
             .then(response => {
-                if (response.success) {
-                    if (response.progress) {
-                        updateProgressBarCommon(response.progress);
-                    }
-                } else {
+                if (!response.success) {
                     alert('测试失败: ' + response.message);
-                    if (progressContainer) progressContainer.style.display = 'none';
                 }
             })
             .catch(() => {
                 alert('请求失败，请稍后重试');
-                if (progressContainer) progressContainer.style.display = 'none';
-            });
-    }
-
-    function startProgressCheck() {
-        if (window.progressTimer) {
-            clearInterval(window.progressTimer);
-        }
-        checkTestProgress();
-        window.progressTimer = setInterval(checkTestProgress, 3000);
-    }
-
-    function checkTestProgress() {
-        fetch('{{ url_for("get_test_progress") }}')
-            .then(res => res.json())
-            .then(response => {
-                if (response.success) {
-                    if (response.progress.is_testing || (!response.progress.is_testing && response.progress.completed == response.progress.total && response.progress.total > 0)) {
-                        updateProgressBarCommon(response.progress);
-                    }
-                }
-                // 每次轮询都刷新频道状态
-                updateChannelStats();
             })
-            .catch(() => {
-                console.error('获取进度信息失败');
+            .finally(() => {
+                // 保持自动刷新继续进行一段时间；立即恢复按钮
+                if (testAllBtn) {
+                    testAllBtn.disabled = false;
+                    testAllBtn.innerHTML = '<i class="bi bi-lightning"></i> 测试所有频道';
+                }
             });
     }
 </script>

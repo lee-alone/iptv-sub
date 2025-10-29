@@ -36,6 +36,12 @@ class Config:
         self.enable_stream_test = True  # 是否启用流测试
         self.test_interval_hours = 24  # 测试间隔（小时）
         self.test_all_sources = False  # 是否测试所有源URL
+
+        # 流测试高级设置（HLS 深度检测）
+        self.deep_check = True  # 是否启用HLS深度检测（识别循环/停滞）
+        self.loop_checks = 3  # 连续检测次数
+        self.loop_interval = 4.0  # 检测间隔（秒）
+        self.segment_window = 5  # 分片窗口大小（最后K个分片）
         
         # 聚合配置
         self.match_by = 'name'  # 匹配方式：'name', 'tvg_id', 'both'
@@ -60,6 +66,13 @@ class Config:
                     if hasattr(self, key):
                         setattr(self, key, value)
                 
+                # 检查是否有缺失字段，若有则回写补全
+                expected_keys = self.get_config_dict().keys()
+                missing = [k for k in expected_keys if k not in config_data]
+                if missing:
+                    logger.info(f"检测到配置缺失字段，将自动补全并保存: {missing}")
+                    self.save_config()
+                
                 logger.info("配置已加载")
             except Exception as e:
                 logger.error(f"加载配置时出错: {str(e)}")
@@ -80,7 +93,11 @@ class Config:
                 'test_interval_hours': self.test_interval_hours,
                 'test_all_sources': self.test_all_sources,
                 'match_by': self.match_by,
-                'similarity_threshold': self.similarity_threshold
+                'similarity_threshold': self.similarity_threshold,
+                'deep_check': self.deep_check,
+                'loop_checks': self.loop_checks,
+                'loop_interval': self.loop_interval,
+                'segment_window': self.segment_window
             }
             
             with open(self.config_file, 'w', encoding='utf-8') as f:
@@ -107,5 +124,9 @@ class Config:
             'test_interval_hours': self.test_interval_hours,
             'test_all_sources': self.test_all_sources,
             'match_by': self.match_by,
-            'similarity_threshold': self.similarity_threshold
+            'similarity_threshold': self.similarity_threshold,
+            'deep_check': self.deep_check,
+            'loop_checks': self.loop_checks,
+            'loop_interval': self.loop_interval,
+            'segment_window': self.segment_window
         }

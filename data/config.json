@@ -6,6 +6,10 @@
   "enable_stream_test": true,
   "test_interval_hours": 24,
   "test_all_sources": false,
-  "match_by": "name",
-  "similarity_threshold": 0.5
+  "match_by": "both",
+  "similarity_threshold": 0.5,
+  "deep_check": true,
+  "loop_checks": 3,
+  "loop_interval": 4.0,
+  "segment_window": 5
 }
