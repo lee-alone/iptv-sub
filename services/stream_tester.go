@@ -25,32 +25,58 @@ type StreamTester struct {
 	loopInterval  time.Duration
 	segmentWindow int
 	logger        *utils.Logger
+	// 限流相关
+	domainLimiter   *DomainLimiter
+	adaptiveLimiter *AdaptiveLimiter
+	hostCooldown    *HostCooldown
 }
 
 // NewStreamTester 创建新的流测试器
 func NewStreamTester(timeout time.Duration, maxWorkers int) *StreamTester {
-	return &StreamTester{
-		timeout:    timeout,
-		maxWorkers: maxWorkers,
-		client: &http.Client{
-			Timeout: timeout,
-			Transport: &http.Transport{
-				ResponseHeaderTimeout: timeout,
-				MaxIdleConns:          100,
-				MaxIdleConnsPerHost:   10,
-				DisableKeepAlives:     false,
-				DialContext: (&net.Dialer{
-					Timeout:   timeout,
-					KeepAlive: 30 * time.Second,
-				}).DialContext,
-			},
+	// 计算单主机最大并发数（总并发的 1/4，最少 2，最多 10）
+	maxPerHost := max(2, min(10, maxWorkers/4))
+
+	st := &StreamTester{
+		timeout:         timeout,
+		maxWorkers:      maxWorkers,
+		deepCheck:       false,
+		loopChecks:      3,
+		loopInterval:    4 * time.Second,
+		segmentWindow:   5,
+		logger:          utils.NewLogger(),
+		domainLimiter:   NewDomainLimiter(maxPerHost),
+		adaptiveLimiter: NewAdaptiveLimiter(maxWorkers),
+		hostCooldown:    NewHostCooldown(100 * time.Millisecond), // 100ms 冷却时间
+	}
+	st.client = st.createHTTPClient(timeout, maxWorkers)
+	st.logger.Info("StreamTester initialized: maxWorkers=%d, maxPerHost=%d", maxWorkers, maxPerHost)
+	return st
+}
+
+// createHTTPClient 创建 HTTP 客户端，根据 maxWorkers 自适应连接池大小
+func (st *StreamTester) createHTTPClient(timeout time.Duration, maxWorkers int) *http.Client {
+	// MaxIdleConnsPerHost 应该至少等于 maxWorkers，以支持并发测试
+	// 如果 maxWorkers 很大，也要考虑系统资源，设置一个合理的上限
+	maxConnsPerHost := maxWorkers
+	if maxConnsPerHost < 10 {
+		maxConnsPerHost = 10 // 最小值
+	}
+	if maxConnsPerHost > 100 {
+		maxConnsPerHost = 100 // 最大值
+	}
+
+	return &http.Client{
+		Timeout: timeout,
+		Transport: &http.Transport{
+			ResponseHeaderTimeout: timeout,
+			MaxIdleConns:          maxConnsPerHost * 2, // 总连接数是单主机的 2 倍
+			MaxIdleConnsPerHost:   maxConnsPerHost,
+			DisableKeepAlives:     false,
+			DialContext: (&net.Dialer{
+				Timeout:   timeout,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
 		},
-		// 默认配置，可以通过后接的配置方法修改
-		deepCheck:     false,
-		loopChecks:    3,
-		loopInterval:  4 * time.Second,
-		segmentWindow: 5,
-		logger:        utils.NewLogger(),
 	}
 }
 
@@ -65,24 +91,20 @@ func (st *StreamTester) SetDeepCheckOptions(enabled bool, checks int, interval t
 // SetStreamTestTimeout 设置流测试超时时间
 func (st *StreamTester) SetStreamTestTimeout(timeout time.Duration) {
 	st.timeout = timeout
-	st.client = &http.Client{
-		Timeout: timeout,
-		Transport: &http.Transport{
-			ResponseHeaderTimeout: timeout,
-			MaxIdleConns:          100,
-			MaxIdleConnsPerHost:   10,
-			DisableKeepAlives:     false,
-			DialContext: (&net.Dialer{
-				Timeout:   timeout,
-				KeepAlive: 30 * time.Second,
-			}).DialContext,
-		},
-	}
+	st.client = st.createHTTPClient(timeout, st.maxWorkers)
 }
 
 // SetMaxWorkers 设置最大并发工作数
 func (st *StreamTester) SetMaxWorkers(maxWorkers int) {
 	st.maxWorkers = maxWorkers
+	// 重新创建 HTTP 客户端，以适应新的并发数
+	st.client = st.createHTTPClient(st.timeout, maxWorkers)
+	// 更新自适应限流器
+	st.adaptiveLimiter = NewAdaptiveLimiter(maxWorkers)
+	// 更新域名限流器
+	maxPerHost := max(2, min(10, maxWorkers/4))
+	st.domainLimiter = NewDomainLimiter(maxPerHost)
+	st.logger.Info("MaxWorkers updated to %d, maxPerHost=%d", maxWorkers, maxPerHost)
 }
 
 // TestStream 测试单个流
@@ -350,10 +372,16 @@ func (st *StreamTester) BatchTest(channels []*models.Channel, testAllSources boo
 		return channels, nil
 	}
 
-	st.logger.Info("开始批量测试 %d 个频道", len(channels))
+	// 可选：去重测试 - 避免重复测试相同的 URL
+	if !testAllSources {
+		channels = st.deduplicateChannels(channels)
+	}
 
-	// 创建工作池
-	semaphore := make(chan struct{}, st.maxWorkers)
+	st.logger.Info("Starting batch test for %d channels", len(channels))
+
+	// 创建工作池，使用自适应并发数
+	effectiveWorkers := st.adaptiveLimiter.GetEffectiveWorkers()
+	semaphore := make(chan struct{}, effectiveWorkers)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
@@ -379,15 +407,52 @@ func (st *StreamTester) BatchTest(channels []*models.Channel, testAllSources boo
 			}
 
 			if completedCount%10 == 0 || completedCount == len(channels) {
-				st.logger.Info("测试进度: %d/%d (在线: %d, 离线: %d)", completedCount, len(channels), onlineCount, offlineCount)
+				st.logger.Info("Test progress: %d/%d (online: %d, offline: %d, effective workers: %d)",
+					completedCount, len(channels), onlineCount, offlineCount, st.adaptiveLimiter.GetEffectiveWorkers())
 			}
 			mu.Unlock()
 		}(channel)
 	}
 
 	wg.Wait()
-	st.logger.Info("所有频道测试完成! 总计: %d, 在线: %d, 离线: %d", len(channels), onlineCount, offlineCount)
+	st.logger.Info("Batch test completed! Total: %d, online: %d, offline: %d", len(channels), onlineCount, offlineCount)
+
+	// 输出限流统计信息
+	st.logRateLimiterStats()
+
 	return channels, nil
+}
+
+// deduplicateChannels 去重频道 - 避免重复测试相同的 URL
+func (st *StreamTester) deduplicateChannels(channels []*models.Channel) []*models.Channel {
+	deduped := make(map[string]bool)
+	uniqueChannels := make([]*models.Channel, 0, len(channels))
+
+	for _, ch := range channels {
+		if len(ch.URLs) > 0 && !deduped[ch.URLs[0]] {
+			deduped[ch.URLs[0]] = true
+			uniqueChannels = append(uniqueChannels, ch)
+		}
+	}
+
+	if len(uniqueChannels) < len(channels) {
+		st.logger.Info("Deduplicated channels: %d -> %d", len(channels), len(uniqueChannels))
+	}
+
+	return uniqueChannels
+}
+
+// logRateLimiterStats 输出限流统计信息
+func (st *StreamTester) logRateLimiterStats() {
+	domainStats := st.domainLimiter.GetStats()
+	if len(domainStats) > 0 {
+		st.logger.Info("Domain limiter stats: %v", domainStats)
+	}
+
+	cooldownStats := st.hostCooldown.GetStats()
+	if len(cooldownStats) > 0 {
+		st.logger.Debug("Host cooldown stats: %d hosts tracked", len(cooldownStats))
+	}
 }
 
 // testChannel 测试单个频道
@@ -400,27 +465,54 @@ func (st *StreamTester) testChannel(channel *models.Channel, testAllSources bool
 	if testAllSources {
 		// 测试所有 URL
 		for _, url := range channel.URLs {
+			st.hostCooldown.Wait(url)
+			release := st.domainLimiter.Acquire(url)
+
 			online, rt, err := st.TestStream(url)
+			st.hostCooldown.Record(url)
+
 			if err == nil && online {
+				st.adaptiveLimiter.RecordSuccess()
 				workingURL = url
 				responseTime = rt
 				isOnline = true
+				release() // ✅ 立即释放，不使用 defer
 				break
 			} else if err != nil {
+				// 检测是否是限流错误
+				if isRateLimitError(err) {
+					st.adaptiveLimiter.RecordError()
+					st.logger.Warn("Rate limit detected for URL: %s, error: %v", url, err)
+				}
 				lastError = err
 			}
+
+			release() // ✅ 失败后立即释放，继续下一个 URL
 		}
 	} else {
 		// 只测试第一个 URL
 		if len(channel.URLs) > 0 {
-			online, rt, err := st.TestStream(channel.URLs[0])
+			url := channel.URLs[0]
+			st.hostCooldown.Wait(url)
+			release := st.domainLimiter.Acquire(url)
+
+			online, rt, err := st.TestStream(url)
+			st.hostCooldown.Record(url)
+
 			if err == nil && online {
-				workingURL = channel.URLs[0]
+				st.adaptiveLimiter.RecordSuccess()
+				workingURL = url
 				responseTime = rt
 				isOnline = true
-			} else if err != nil {
+			} else {
+				if isRateLimitError(err) {
+					st.adaptiveLimiter.RecordError()
+					st.logger.Warn("Rate limit detected for URL: %s, error: %v", url, err)
+				}
 				lastError = err
 			}
+
+			release() // ✅ 显式释放
 		}
 	}
 
@@ -437,4 +529,28 @@ func (st *StreamTester) testChannel(channel *models.Channel, testAllSources bool
 	if lastError != nil && !isOnline {
 		channel.TestResults.Details = lastError.Error()
 	}
+}
+
+// isRateLimitError 检测是否是限流错误（只检测明确的限流错误）
+func isRateLimitError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errStr := err.Error()
+	// 只检测明确的限流错误，避免误判网络错误
+	return contains(errStr, "429") ||
+		contains(errStr, "403") ||
+		contains(errStr, "Too Many Requests") ||
+		contains(errStr, "Forbidden")
+}
+
+// contains 检查字符串是否包含子串
+func contains(str, substr string) bool {
+	for i := 0; i <= len(str)-len(substr); i++ {
+		if str[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }
