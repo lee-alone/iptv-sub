@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>订阅源管理 - IPTV M3U 聚合器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-broadcast"></i> IPTV M3U 聚合器
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">仪表板</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/subscriptions.html">订阅源</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/channels.html">频道</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/settings.html">设置</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主容器 -->
+    <div class="container-fluid py-4">
+        <!-- 添加订阅源表单 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">添加订阅源</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="addSubscriptionForm" onsubmit="handleAddSubscription(event)">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">订阅源 URL</label>
+                                    <input type="url" class="form-control" id="subUrl"
+                                        placeholder="https://example.com/playlist.m3u" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">名称</label>
+                                    <input type="text" class="form-control" id="subName" placeholder="例如：IPTV 直播"
+                                        required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="subEnabled" checked>
+                                    <label class="form-check-label" for="subEnabled">启用此订阅源</label>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-plus"></i> 添加
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 订阅源列表 -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">订阅源列表</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>名称</th>
+                                        <th>URL</th>
+                                        <th>频道数</th>
+                                        <th>状态</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="subscriptionsList">
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">加载中...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="bg-light py-3 mt-5">
+        <div class="container-fluid text-center">
+            <p class="mb-0 text-muted">IPTV M3U 聚合器 &copy; 2024</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/main.js"></script>
+    <script>
+        // 页面加载时获取订阅源列表
+        document.addEventListener('DOMContentLoaded', function () {
+            loadSubscriptions();
+        });
+
+        function loadSubscriptions() {
+            api.getSubscriptions().then(subs => {
+                const tbody = document.getElementById('subscriptionsList');
+                if (subs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">暂无订阅源</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = subs.map((sub, index) => `
+                    <tr>
+                        <td>${sub.name || '未命名'}</td>
+                        <td>
+                            <div class="text-truncate" style="max-width: 300px;" title="${sub.url}">
+                                ${sub.url}
+                            </div>
+                        </td>
+                        <td>${sub.channel_count || 0}</td>
+                        <td><span class="badge bg-success">活跃</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="updateSubscription('${sub.url}', '${sub.name}')">
+                                <i class="bi bi-arrow-clockwise"></i> 更新
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteSubscription('${sub.url}')">
+                                <i class="bi bi-trash"></i> 删除
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            }).catch(err => {
+                console.error('Failed to load subscriptions:', err);
+                document.getElementById('subscriptionsList').innerHTML =
+                    '<tr><td colspan="5" class="text-center text-danger">加载失败</td></tr>';
+            });
+        }
+
+        function updateSubscription(url, name) {
+            const btn = event.currentTarget;
+            const oldContent = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> 更新中...';
+
+            api.aggregateChannels(url)
+                .then(result => {
+                    utils.showSuccess(`更新成功: 新增 ${result.added} 个频道, 更新 ${result.updated} 个频道`);
+                    loadSubscriptions();
+                })
+                .catch(err => {
+                    utils.showError('更新失败: ' + err.message);
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = oldContent;
+                });
+        }
+
+        function handleAddSubscription(event) {
+            event.preventDefault();
+
+            const url = document.getElementById('subUrl').value.trim();
+            const name = document.getElementById('subName').value.trim();
+            const enabled = document.getElementById('subEnabled').checked;
+
+            if (!url || !name) {
+                utils.showError('请填写所有必填字段');
+                return;
+            }
+
+            if (!utils.isValidUrl(url)) {
+                utils.showError('请输入有效的 URL');
+                return;
+            }
+
+            const btn = event.target.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> 添加中...';
+
+            api.addSubscription(url, name, enabled)
+                .then(() => {
+                    utils.showSuccess('订阅源添加成功');
+                    document.getElementById('addSubscriptionForm').reset();
+                    loadSubscriptions();
+                })
+                .catch(err => {
+                    utils.showError('添加失败: ' + err.message);
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-plus"></i> 添加';
+                });
+        }
+
+        function deleteSubscription(url) {
+            if (!utils.confirm('确定要删除此订阅源吗？')) {
+                return;
+            }
+
+            api.deleteSubscription(url)
+                .then(() => {
+                    utils.showSuccess('订阅源已删除');
+                    loadSubscriptions();
+                })
+                .catch(err => {
+                    utils.showError('删除失败: ' + err.message);
+                });
+        }
+    </script>
+</body>
+
+</html>

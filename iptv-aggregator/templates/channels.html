@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>频道管理 - IPTV M3U 聚合器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-broadcast"></i> IPTV M3U 聚合器
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">仪表板</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/subscriptions.html">订阅源</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/channels.html">频道</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/settings.html">设置</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主容器 -->
+    <div class="container-fluid py-4">
+        <!-- 搜索和过滤 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">搜索和过滤</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <input type="text" class="form-control" id="searchInput" placeholder="搜索频道名称...">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <select class="form-select" id="statusFilter">
+                                    <option value="">所有状态</option>
+                                    <option value="online">在线</option>
+                                    <option value="offline">离线</option>
+                                    <option value="untested">未测试</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <button class="btn btn-primary w-100" onclick="searchChannels()">
+                                    <i class="bi bi-search"></i> 搜索
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 频道列表 -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">频道列表</h5>
+                        <button class="btn btn-sm btn-success" onclick="testAllChannels()">
+                            <i class="bi bi-lightning"></i> 测试所有
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>频道名称</th>
+                                        <th>分组</th>
+                                        <th>状态</th>
+                                        <th>响应时间</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="channelsList">
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">加载中...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="bg-light py-3 mt-5">
+        <div class="container-fluid text-center">
+            <p class="mb-0 text-muted">IPTV M3U 聚合器 &copy; 2024</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/main.js"></script>
+    <script>
+        let allChannels = [];
+
+        // 页面加载时获取频道列表
+        document.addEventListener('DOMContentLoaded', function () {
+            loadChannels();
+
+            // 搜索框回车事件
+            document.getElementById('searchInput').addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    searchChannels();
+                }
+            });
+        });
+
+        function loadChannels() {
+            api.getChannels().then(channels => {
+                allChannels = channels;
+                displayChannels(channels);
+            }).catch(err => {
+                console.error('Failed to load channels:', err);
+                document.getElementById('channelsList').innerHTML =
+                    '<tr><td colspan="5" class="text-center text-danger">加载失败</td></tr>';
+            });
+        }
+
+        function displayChannels(channels) {
+            const tbody = document.getElementById('channelsList');
+            if (channels.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">暂无频道</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = channels.map((ch, index) => {
+                const status = ch.test_results?.status || 'untested';
+                const statusBadge = getStatusBadge(status);
+                const responseTime = ch.test_results?.response_time ?
+                    (ch.test_results.response_time / 1000).toFixed(2) + 's' : '-';
+
+                return `
+                    <tr>
+                        <td>
+                            <div class="text-truncate" title="${ch.name}">
+                                ${ch.name}
+                            </div>
+                        </td>
+                        <td>${ch.group_title || '-'}</td>
+                        <td>${statusBadge}</td>
+                        <td>${responseTime}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="testChannel(${index})">
+                                <i class="bi bi-lightning"></i> 测试
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                'online': '<span class="badge bg-success">在线</span>',
+                'offline': '<span class="badge bg-danger">离线</span>',
+                'untested': '<span class="badge bg-warning">未测试</span>'
+            };
+            return badges[status] || '<span class="badge bg-secondary">未知</span>';
+        }
+
+        function searchChannels() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const status = document.getElementById('statusFilter').value;
+
+            let filtered = allChannels;
+
+            if (query) {
+                filtered = filtered.filter(ch =>
+                    ch.name.toLowerCase().includes(query)
+                );
+            }
+
+            if (status) {
+                filtered = filtered.filter(ch =>
+                    (ch.test_results?.status || 'untested') === status
+                );
+            }
+
+            displayChannels(filtered);
+        }
+
+        function testChannel(index) {
+            const channel = allChannels[index];
+            const btn = event.currentTarget;
+            const oldContent = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> 测...';
+
+            api.testChannel(channel.id)
+                .then(() => {
+                    utils.showSuccess(`频道 [${channel.name}] 测试完成`);
+                    loadChannels();
+                })
+                .catch(err => {
+                    utils.showError('测试失败: ' + err.message);
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-lightning"></i> 测试';
+                });
+        }
+
+        function testAllChannels() {
+            if (!utils.confirm('确定要测试所有频道吗？这可能需要一些时间。')) {
+                return;
+            }
+
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> 测试中...';
+
+            api.testChannels(false)
+                .then(() => {
+                    utils.showSuccess('所有频道测试完成');
+                    loadChannels();
+                })
+                .catch(err => {
+                    utils.showError('测试失败: ' + err.message);
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-lightning"></i> 测试所有';
+                });
+        }
+    </script>
+</body>
+
+</html>

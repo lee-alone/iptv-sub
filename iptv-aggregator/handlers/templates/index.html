@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTV M3U 聚合器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-broadcast"></i> IPTV M3U 聚合器
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/">仪表板</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/subscriptions.html">订阅源</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/channels.html">频道</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/settings.html">设置</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主容器 -->
+    <div class="container-fluid py-4">
+        <!-- 统计卡片 -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <h6 class="card-title">总频道数</h6>
+                        <h2 id="stat-total-channels">0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <h6 class="card-title">在线频道</h6>
+                        <h2 id="stat-online-channels">0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card bg-danger text-white">
+                    <div class="card-body">
+                        <h6 class="card-title">离线频道</h6>
+                        <h2 id="stat-offline-channels">0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card bg-warning text-dark">
+                    <div class="card-body">
+                        <h6 class="card-title">等待测试</h6>
+                        <h2 id="stat-untested-channels">0</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 快速操作 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-primary mb-4">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-link-45deg"></i> 我的聚合订阅地址</h5>
+                        <span class="badge bg-white text-primary">最新在线</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="input-group">
+                            <input type="text" class="form-control form-control-lg bg-light" id="subscription-url"
+                                readonly>
+                            <button class="btn btn-primary" onclick="copySubscriptionUrl()">
+                                <i class="bi bi-clipboard"></i> 复制地址
+                            </button>
+                        </div>
+                        <div class="d-flex align-items-center mt-2">
+                            <i class="bi bi-info-circle text-primary me-2"></i>
+                            <p class="form-text mb-0">
+                                将此地址填入您的播放器（如 PotPlayer, Kodi, TiviMate 等）即可同步最新的在线频道。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">快速操作</h5>
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-primary me-2" onclick="updateSubscriptions()">
+                            <i class="bi bi-arrow-repeat"></i> 更新订阅源
+                        </button>
+                        <button class="btn btn-success me-2" onclick="testAllChannels()">
+                            <i class="bi bi-lightning"></i> 测试所有频道
+                        </button>
+                        <div class="btn-group">
+                            <button class="btn btn-info dropdown-toggle" data-bs-toggle="dropdown">
+                                <i class="bi bi-download"></i> 导出频道
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" onclick="doExport('m3u')">导出 M3U</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="doExport('json')">导出 JSON</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 订阅源列表 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">订阅源</h5>
+                        <a href="/subscriptions.html" class="btn btn-sm btn-primary">管理</a>
+                    </div>
+                    <div class="card-body">
+                        <div id="subscriptions-list" class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>名称</th>
+                                        <th>频道数</th>
+                                        <th>状态</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="subscriptions-tbody">
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted">加载中...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="bg-light py-3 mt-5">
+        <div class="container-fluid text-center">
+            <p class="mb-0 text-muted">IPTV M3U 聚合器 &copy; 2024</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/main.js"></script>
+    <script>
+        // 页面加载时获取统计信息
+        document.addEventListener('DOMContentLoaded', function () {
+            loadStats();
+            loadSubscriptions();
+            updateSubscriptionDisplay();
+            // 每 5 秒刷新一次统计信息
+            setInterval(loadStats, 5000);
+        });
+
+        function updateSubscriptionDisplay() {
+            const protocol = window.location.protocol;
+            const host = window.location.host;
+            const url = `${protocol}//${host}/playlist.m3u`;
+            document.getElementById('subscription-url').value = url;
+        }
+
+        function copySubscriptionUrl() {
+            const urlInput = document.getElementById('subscription-url');
+            utils.copyToClipboard(urlInput.value);
+        }
+
+        function loadStats() {
+            api.getStats().then(stats => {
+                document.getElementById('stat-total-channels').textContent = stats.total_channels || 0;
+                document.getElementById('stat-online-channels').textContent = stats.online_channels || 0;
+                document.getElementById('stat-offline-channels').textContent = stats.offline_channels || 0;
+                document.getElementById('stat-untested-channels').textContent = stats.untested_channels || 0;
+            }).catch(err => console.error('Failed to load stats:', err));
+        }
+
+        function loadSubscriptions() {
+            api.getSubscriptions().then(subs => {
+                const tbody = document.getElementById('subscriptions-tbody');
+                if (subs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">暂无订阅源</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = subs.map(sub => `
+                    <tr>
+                        <td>${sub.name || sub.url}</td>
+                        <td>${sub.channel_count || 0}</td>
+                        <td>${getStatusBadge(sub.status)}</td>
+                    </tr>
+                `).join('');
+            }).catch(err => console.error('Failed to load subscriptions:', err));
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                'active': '<span class="badge bg-success">活跃</span>',
+                'failed': '<span class="badge bg-danger">失败</span>',
+                'untested': '<span class="badge bg-warning">待测试</span>'
+            };
+            return badges[status] || `<span class="badge bg-secondary">${status || '未知'}</span>`;
+        }
+
+        function updateSubscriptions() {
+            if (confirm('确定要更新所有订阅源吗？')) {
+                const btn = event.currentTarget;
+                const oldContent = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> 更新中...';
+
+                api.updateSubscriptions().then(result => {
+                    utils.showSuccess('订阅源更新完成');
+                    loadStats();
+                    loadSubscriptions();
+                }).catch(err => {
+                    utils.showError('更新失败: ' + err.message);
+                }).finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = oldContent;
+                });
+            }
+        }
+
+        function testAllChannels() {
+            if (confirm('确定要测试所有频道吗？这可能需要一些时间。')) {
+                const btn = event.currentTarget;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="bi bi-lightning"></i> 测试中...';
+
+                api.testChannels().then(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-lightning"></i> 测试所有频道';
+                    loadStats();
+                }).catch(err => {
+                    alert('测试失败: ' + err.message);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-lightning"></i> 测试所有频道';
+                });
+            }
+        }
+
+        function doExport(format) {
+            utils.showSuccess('正在生成导出文件...');
+            api.exportChannels(format, true).then(result => {
+                // 转换物理路径为 Web 路径
+                const filename = result.filepath.replace(/\\/g, '/').split('/').pop();
+                const url = `/exports/${filename}`;
+
+                const modalHtml = `
+                    <div class="alert alert-success mt-3">
+                        <strong>导出成功!</strong> 文件已生成。<br>
+                        <div class="mt-2">
+                            <a href="${url}" class="btn btn-sm btn-success" download>立即下载</a>
+                            <button class="btn btn-sm btn-outline-success" onclick="utils.copyToClipboard('${window.location.origin}${url}')">复制下载链接</button>
+                        </div>
+                    </div>
+                `;
+                utils.showAlert('文件导出成功: ' + filename, 'success');
+                // 可以在页面显示下载链接，这里简单起见跳转到下载
+                window.open(url, '_blank');
+            }).catch(err => {
+                utils.showError('导出失败: ' + err.message);
+            });
+        }
+    </script>
+</body>
+
+</html>

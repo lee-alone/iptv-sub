@@ -1,0 +1,44 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Test binary
+*.test
+
+# Output of coverage
+*.out
+coverage.html
+
+# Go workspace file
+go.work
+
+# Build output
+/build/
+/dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data files
+/data/subscriptions.json
+/data/channels.json
+/data/exports/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak

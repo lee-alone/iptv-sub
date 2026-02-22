@@ -1,0 +1,18 @@
+{
+  "port": 8080,
+  "host": "0.0.0.0",
+  "request_timeout": 30000000000,
+  "stream_test_timeout": 5000000000,
+  "max_test_workers": 10,
+  "update_interval": 86400000000000,
+  "test_interval": 86400000000000,
+  "enable_stream_test": true,
+  "test_all_sources": false,
+  "match_by": "name",
+  "similarity_threshold": 0.85,
+  "deep_check": true,
+  "loop_checks": 3,
+  "loop_interval": 4000000000,
+  "segment_window": 5,
+  "data_dir": "data"
+}
