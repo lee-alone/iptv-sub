@@ -75,9 +75,12 @@ func SetupRouter(
 
 		// 3. INFO 级别：常规业务输出，但过滤高频噪音
 		if currentLevel == utils.INFO {
-			// 过滤静态文件和健康检查的正常 200 请求
+			// 过滤静态文件、健康检查和高频 API (轮询) 请求的正常 200 响应
 			isNoise := (path == "/health" ||
 				path == "/favicon.ico" ||
+				path == "/api/stats" ||
+				path == "/api/config" ||
+				path == "/api/subscriptions" ||
 				len(path) > 7 && path[:8] == "/static/")
 
 			if isNoise && status < 400 {
