@@ -29,11 +29,19 @@ func main() {
 	port := flag.Int("port", 8080, "Server port")
 	version := flag.Bool("version", false, "Show version")
 	help := flag.Bool("help", false, "Show help")
+	serviceCmd := flag.String("s", "", "Service management: install|uninstall|start|stop|restart|status")
 
 	flag.Parse()
 
 	if *help {
 		flag.PrintDefaults()
+		fmt.Println("\nService management (Linux only):")
+		fmt.Println("  -s install      Install as system service")
+		fmt.Println("  -s uninstall    Uninstall system service")
+		fmt.Println("  -s start        Start service")
+		fmt.Println("  -s stop         Stop service")
+		fmt.Println("  -s restart      Restart service")
+		fmt.Println("  -s status       Show service status")
 		os.Exit(0)
 	}
 
@@ -47,6 +55,20 @@ func main() {
 
 	// 初始化日志
 	logger := utils.NewLogger()
+
+	// 处理服务管理命令
+	if *serviceCmd != "" {
+		execPath, err := os.Executable()
+		if err != nil {
+			logger.Error("Failed to get executable path: %v", err)
+			os.Exit(1)
+		}
+		if err := utils.HandleServiceCommand(*serviceCmd, execPath, *configPath, logger); err != nil {
+			logger.Error("Service command failed: %v", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
 	logger.Info("Starting IPTV M3U Aggregator...")
 	logger.Info("Version: %s, Build Time: %s, Git Commit: %s", Version, BuildTime, GitCommit)
 

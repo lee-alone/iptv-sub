@@ -19,7 +19,8 @@ help:
 	@echo "Usage:"
 	@echo "  make build              - Build for current platform"
 	@echo "  make build-windows      - Build for Windows x64"
-	@echo "  make build-debian       - Build for Debian/Linux"
+	@echo "  make build-linux        - Build for Linux x64"
+	@echo "  make build-debian       - Build for Debian/Linux (alias for build-linux)"
 	@echo "  make build-all          - Build for all platforms"
 	@echo "  make clean              - Clean build artifacts"
 	@echo "  make test               - Run tests"
@@ -29,6 +30,14 @@ help:
 	@echo "  make lint               - Run linter"
 	@echo "  make deps               - Update dependencies"
 	@echo "  make all                - Clean, test, and build all"
+	@echo ""
+	@echo "Service Management (Linux only):"
+	@echo "  sudo ./build/linux/$(DEBIAN_BINARY) -s install    - Install as system service"
+	@echo "  sudo ./build/linux/$(DEBIAN_BINARY) -s uninstall  - Uninstall system service"
+	@echo "  sudo ./build/linux/$(DEBIAN_BINARY) -s start      - Start service"
+	@echo "  sudo ./build/linux/$(DEBIAN_BINARY) -s stop       - Stop service"
+	@echo "  sudo ./build/linux/$(DEBIAN_BINARY) -s restart    - Restart service"
+	@echo "  sudo ./build/linux/$(DEBIAN_BINARY) -s status     - Show service status"
 	@echo ""
 
 build:
@@ -43,12 +52,15 @@ build-windows:
 
 build-debian:
 	@echo "Building for Debian/Linux x64..."
-	@mkdir -p build/debian
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o $(DEBIAN_OUTPUT) .
-	@chmod +x $(DEBIAN_OUTPUT)
-	@echo "✓ Debian binary: $(DEBIAN_OUTPUT)"
+	@mkdir -p build/linux
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o build/linux/$(DEBIAN_BINARY) .
+	@chmod +x build/linux/$(DEBIAN_BINARY)
+	@echo "✓ Linux binary: build/linux/$(DEBIAN_BINARY)"
 
-build-all: build-windows build-debian
+build-linux: build-debian
+	@echo "✓ Linux build complete"
+
+build-all: build-windows build-linux
 	@echo "✓ All platforms built successfully"
 
 clean:
