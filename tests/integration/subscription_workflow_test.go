@@ -3,8 +3,8 @@ package integration
 import (
 	"testing"
 
-	"github.com/yourusername/iptv-aggregator/services"
-	"github.com/yourusername/iptv-aggregator/tests"
+	"iptv-aggregator/services"
+	"iptv-aggregator/tests"
 )
 
 // TestIntegrationSubscriptionManagementWorkflow tests the complete subscription management workflow

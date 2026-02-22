@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourusername/iptv-aggregator/models"
+	"iptv-aggregator/models"
 )
 
 // M3UParser M3U 文件解析器

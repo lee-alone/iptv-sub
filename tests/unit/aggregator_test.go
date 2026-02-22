@@ -3,9 +3,9 @@ package unit
 import (
 	"testing"
 
-	"github.com/yourusername/iptv-aggregator/models"
-	"github.com/yourusername/iptv-aggregator/services"
-	"github.com/yourusername/iptv-aggregator/tests"
+	"iptv-aggregator/models"
+	"iptv-aggregator/services"
+	"iptv-aggregator/tests"
 )
 
 // TestChannelDeduplication_ExactMatch tests exact channel deduplication

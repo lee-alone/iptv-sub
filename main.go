@@ -7,10 +7,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/yourusername/iptv-aggregator/config"
-	"github.com/yourusername/iptv-aggregator/handlers"
-	"github.com/yourusername/iptv-aggregator/services"
-	"github.com/yourusername/iptv-aggregator/utils"
+	"iptv-aggregator/config"
+	"iptv-aggregator/handlers"
+	"iptv-aggregator/services"
+	"iptv-aggregator/utils"
 )
 
 var (

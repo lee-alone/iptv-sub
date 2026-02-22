@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yourusername/iptv-aggregator/services"
-	"github.com/yourusername/iptv-aggregator/tests"
+	"iptv-aggregator/services"
+	"iptv-aggregator/tests"
 )
 
 // TestParseM3U_StandardFormat tests parsing of standard M3U format

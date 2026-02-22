@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yourusername/iptv-aggregator/models"
-	"github.com/yourusername/iptv-aggregator/utils"
+	"iptv-aggregator/models"
+	"iptv-aggregator/utils"
 )
 
 // StreamTester 流测试器
@@ -60,6 +60,29 @@ func (st *StreamTester) SetDeepCheckOptions(enabled bool, checks int, interval t
 	st.loopChecks = checks
 	st.loopInterval = interval
 	st.segmentWindow = window
+}
+
+// SetStreamTestTimeout 设置流测试超时时间
+func (st *StreamTester) SetStreamTestTimeout(timeout time.Duration) {
+	st.timeout = timeout
+	st.client = &http.Client{
+		Timeout: timeout,
+		Transport: &http.Transport{
+			ResponseHeaderTimeout: timeout,
+			MaxIdleConns:          100,
+			MaxIdleConnsPerHost:   10,
+			DisableKeepAlives:     false,
+			DialContext: (&net.Dialer{
+				Timeout:   timeout,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+		},
+	}
+}
+
+// SetMaxWorkers 设置最大并发工作数
+func (st *StreamTester) SetMaxWorkers(maxWorkers int) {
+	st.maxWorkers = maxWorkers
 }
 
 // TestStream 测试单个流
@@ -149,7 +172,7 @@ func (st *StreamTester) TestStream(rawURL string) (bool, int64, error) {
 			tsReq.Header.Set("User-Agent", userAgent)
 			tsResp, err := st.client.Do(tsReq)
 			if err == nil {
-				tsResp.Body.Close()
+				defer tsResp.Body.Close()
 				if tsResp.StatusCode == 200 {
 					headOK = true
 					break
@@ -270,8 +293,12 @@ func (st *StreamTester) hlsProgressing(playlistURL string, userAgent string) (bo
 		req.Header.Set("User-Agent", userAgent)
 		resp, err := st.client.Do(req)
 		if err == nil {
-			body, _ := io.ReadAll(resp.Body)
+			body, err := io.ReadAll(resp.Body)
 			resp.Body.Close()
+			if err != nil {
+				// 如果读取失败，认为流是前进的
+				return true, nil
+			}
 			signatures = append(signatures, parseSig(string(body)))
 		} else {
 			// 如果拉取失败，不做阻断，暂且认为它是前进的

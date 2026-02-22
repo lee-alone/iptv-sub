@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/yourusername/iptv-aggregator/models"
+	"iptv-aggregator/models"
 )
 
 // SubscriptionManager 订阅源管理器

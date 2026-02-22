@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yourusername/iptv-aggregator/utils"
+	"iptv-aggregator/utils"
 )
 
 // Job 任务定义

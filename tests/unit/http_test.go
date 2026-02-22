@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yourusername/iptv-aggregator/services"
-	"github.com/yourusername/iptv-aggregator/tests"
+	"iptv-aggregator/services"
+	"iptv-aggregator/tests"
 )
 
 // TestFetchM3U_SuccessfulFetch tests successful M3U file fetching

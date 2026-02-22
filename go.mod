@@ -1,4 +1,4 @@
-module github.com/yourusername/iptv-aggregator
+module iptv-aggregator
 
 go 1.21
 

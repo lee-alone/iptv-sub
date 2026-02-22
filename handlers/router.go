@@ -10,9 +10,11 @@ import (
 
 	"io/fs"
 
+	"iptv-aggregator/config"
+	"iptv-aggregator/services"
+	"iptv-aggregator/utils"
+
 	"github.com/gin-gonic/gin"
-	"github.com/yourusername/iptv-aggregator/config"
-	"github.com/yourusername/iptv-aggregator/services"
 )
 
 //go:embed templates
@@ -264,12 +266,11 @@ func SetupRouter(
 			}
 
 			// 1. 立即重置所有频道为未测试状态
-			fmt.Println("API: Global test triggered, resetting all channel results...")
+			logger := utils.NewLogger()
+			logger.Info("Global test triggered, resetting all channel results")
 			aggregator.ResetTestResults()
 
-			// 2. 预先更新统计信息的基准（可选：如果需要立即持久化到订阅源模型，可以在此处添加）
-
-			fmt.Println("API: Reset complete, starting batch test workflow...")
+			logger.Info("Reset complete, starting batch test workflow")
 			channels := aggregator.GetAllChannels()
 			_, err := tester.BatchTest(channels, req.TestAllSources)
 			if err != nil {
@@ -289,14 +290,15 @@ func SetupRouter(
 
 		// 更新所有订阅源 API
 		api.POST("/subscriptions/update", func(c *gin.Context) {
+			logger := utils.NewLogger()
 			subs := subscriptionMgr.GetAllSubscriptions()
-			fmt.Printf("API: Starting update for %d subscriptions\n", len(subs))
+			logger.Info("Starting update for %d subscriptions", len(subs))
 			var results []gin.H
 
 			for _, sub := range subs {
-				fmt.Printf("API: Updating subscription: %s (%s)\n", sub.Name, sub.URL)
+				logger.Info("Updating subscription: %s (%s)", sub.Name, sub.URL)
 				if !sub.Enabled {
-					fmt.Printf("API: Subscription %s is disabled, skipping\n", sub.Name)
+					logger.Info("Subscription %s is disabled, skipping", sub.Name)
 					continue
 				}
 
@@ -327,10 +329,10 @@ func SetupRouter(
 					"updated": updated,
 					"skipped": skipped,
 				})
-				fmt.Printf("API: Subscription %s updated: +%d, ~%d\n", sub.Name, added, updated)
+				logger.Info("Subscription %s updated: +%d, ~%d", sub.Name, added, updated)
 			}
 
-			fmt.Printf("API: Update completed, processed %d subscriptions\n", len(results))
+			logger.Info("Update completed, processed %d subscriptions", len(results))
 			c.JSON(http.StatusOK, gin.H{
 				"message": "update completed",
 				"results": results,
@@ -353,11 +355,12 @@ func SetupRouter(
 			var filepath string
 			var err error
 
-			if req.Format == "m3u" {
+			switch req.Format {
+			case "m3u":
 				filepath, err = exporter.ExportM3U(channels, req.OnlyWorking)
-			} else if req.Format == "json" {
+			case "json":
 				filepath, err = exporter.ExportJSON(channels, req.OnlyWorking)
-			} else {
+			default:
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid format"})
 				return
 			}
@@ -368,6 +371,94 @@ func SetupRouter(
 			}
 
 			c.JSON(http.StatusOK, gin.H{"filepath": filepath})
+		})
+
+		// 配置 API
+		api.GET("/config", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"data": gin.H{
+					"update_interval":      int(cfg.UpdateInterval.Hours()),
+					"match_by":             cfg.MatchBy,
+					"similarity_threshold": int(cfg.SimilarityThreshold * 100),
+					"test_all_sources":     cfg.TestAllSources,
+					"stream_test_timeout":  int(cfg.StreamTestTimeout.Seconds()),
+					"max_test_workers":     cfg.MaxTestWorkers,
+					"deep_check":           cfg.DeepCheck,
+					"loop_checks":          cfg.LoopChecks,
+					"loop_interval":        int(cfg.LoopInterval.Seconds()),
+				},
+			})
+		})
+
+		api.PUT("/config", func(c *gin.Context) {
+			var req struct {
+				UpdateInterval      int    `json:"update_interval"`
+				MatchBy             string `json:"match_by"`
+				SimilarityThreshold int    `json:"similarity_threshold"`
+				TestAllSources      bool   `json:"test_all_sources"`
+				StreamTestTimeout   int    `json:"stream_test_timeout"`
+				MaxTestWorkers      int    `json:"max_test_workers"`
+				DeepCheck           bool   `json:"deep_check"`
+				LoopChecks          int    `json:"loop_checks"`
+				LoopInterval        int    `json:"loop_interval"`
+			}
+
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+
+			// 验证 MatchBy 参数
+			if req.MatchBy != "" {
+				if req.MatchBy != "name" && req.MatchBy != "tvg_id" && req.MatchBy != "both" {
+					c.JSON(http.StatusBadRequest, gin.H{"error": "invalid match_by value, must be one of: name, tvg_id, both"})
+					return
+				}
+			}
+
+			// 验证 MaxTestWorkers 上限
+			if req.MaxTestWorkers > 0 && req.MaxTestWorkers > 100 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "max_test_workers must be <= 100"})
+				return
+			}
+
+			// 更新配置对象
+			if req.UpdateInterval > 0 {
+				cfg.UpdateInterval = time.Duration(req.UpdateInterval) * time.Hour
+			}
+			if req.MatchBy != "" {
+				cfg.MatchBy = req.MatchBy
+			}
+			if req.SimilarityThreshold >= 0 && req.SimilarityThreshold <= 100 {
+				cfg.SimilarityThreshold = float64(req.SimilarityThreshold) / 100.0
+			}
+			cfg.TestAllSources = req.TestAllSources
+			if req.StreamTestTimeout > 0 {
+				cfg.StreamTestTimeout = time.Duration(req.StreamTestTimeout) * time.Second
+				tester.SetStreamTestTimeout(cfg.StreamTestTimeout)
+			}
+			if req.MaxTestWorkers > 0 {
+				cfg.MaxTestWorkers = req.MaxTestWorkers
+				tester.SetMaxWorkers(cfg.MaxTestWorkers)
+			}
+			cfg.DeepCheck = req.DeepCheck
+			if req.LoopChecks > 0 {
+				cfg.LoopChecks = req.LoopChecks
+			}
+			if req.LoopInterval > 0 {
+				cfg.LoopInterval = time.Duration(req.LoopInterval) * time.Second
+			}
+
+			// 同步更新 StreamTester 的深度检查选项
+			tester.SetDeepCheckOptions(cfg.DeepCheck, cfg.LoopChecks, cfg.LoopInterval, cfg.SegmentWindow)
+
+			// 保存配置到文件
+			if err := config.SaveConfig("config.json", cfg); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to save config: %v", err)})
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{"message": "config updated successfully"})
 		})
 
 		// 统计 API

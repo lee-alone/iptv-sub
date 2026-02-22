@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yourusername/iptv-aggregator/services"
-	"github.com/yourusername/iptv-aggregator/tests"
+	"iptv-aggregator/services"
+	"iptv-aggregator/tests"
 )
 
 // TestIntegrationSchedulerWorkflow tests the complete scheduler workflow

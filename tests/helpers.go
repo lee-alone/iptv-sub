@@ -2,15 +2,15 @@ package tests
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
 // CreateTempDir creates a temporary directory for testing
 func CreateTempDir(t *testing.T) string {
-	tmpDir, err := ioutil.TempDir("", "iptv-test-")
+	tmpDir, err := os.MkdirTemp("", "iptv-test-")
 	if err != nil {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}
@@ -27,7 +27,7 @@ func CleanupTempDir(t *testing.T, dir string) {
 // CreateTestFile creates a test file with the given content
 func CreateTestFile(t *testing.T, dir, filename, content string) string {
 	filePath := filepath.Join(dir, filename)
-	if err := ioutil.WriteFile(filePath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
 		t.Fatalf("Failed to create test file %s: %v", filePath, err)
 	}
 	return filePath
@@ -35,7 +35,7 @@ func CreateTestFile(t *testing.T, dir, filename, content string) string {
 
 // ReadTestFile reads the content of a test file
 func ReadTestFile(t *testing.T, filePath string) string {
-	content, err := ioutil.ReadFile(filePath)
+	content, err := os.ReadFile(filePath)
 	if err != nil {
 		t.Fatalf("Failed to read test file %s: %v", filePath, err)
 	}
@@ -43,14 +43,14 @@ func ReadTestFile(t *testing.T, filePath string) string {
 }
 
 // AssertEqual asserts that two values are equal
-func AssertEqual(t *testing.T, expected, actual interface{}, message string) {
+func AssertEqual(t *testing.T, expected, actual any, message string) {
 	if expected != actual {
 		t.Errorf("Assertion failed: %s\nExpected: %v\nActual: %v", message, expected, actual)
 	}
 }
 
 // AssertNotEqual asserts that two values are not equal
-func AssertNotEqual(t *testing.T, expected, actual interface{}, message string) {
+func AssertNotEqual(t *testing.T, expected, actual any, message string) {
 	if expected == actual {
 		t.Errorf("Assertion failed: %s\nExpected not equal to: %v\nActual: %v", message, expected, actual)
 	}
@@ -71,14 +71,14 @@ func AssertFalse(t *testing.T, condition bool, message string) {
 }
 
 // AssertNil asserts that a value is nil
-func AssertNil(t *testing.T, value interface{}, message string) {
+func AssertNil(t *testing.T, value any, message string) {
 	if value != nil {
 		t.Errorf("Assertion failed: %s\nExpected nil, got: %v", message, value)
 	}
 }
 
 // AssertNotNil asserts that a value is not nil
-func AssertNotNil(t *testing.T, value interface{}, message string) {
+func AssertNotNil(t *testing.T, value any, message string) {
 	if value == nil {
 		t.Errorf("Assertion failed: %s (expected not nil)", message)
 	}
@@ -124,21 +124,15 @@ func AssertSliceEqual(t *testing.T, expected, actual []string, message string) {
 
 // AssertContains asserts that a slice contains a specific value
 func AssertContains(t *testing.T, slice []string, value string, message string) {
-	for _, v := range slice {
-		if v == value {
-			return
-		}
+	if !slices.Contains(slice, value) {
+		t.Errorf("Assertion failed: %s\nExpected slice to contain: %s", message, value)
 	}
-	t.Errorf("Assertion failed: %s\nExpected slice to contain: %s", message, value)
 }
 
 // AssertNotContains asserts that a slice does not contain a specific value
 func AssertNotContains(t *testing.T, slice []string, value string, message string) {
-	for _, v := range slice {
-		if v == value {
-			t.Errorf("Assertion failed: %s\nExpected slice not to contain: %s", message, value)
-			return
-		}
+	if slices.Contains(slice, value) {
+		t.Errorf("Assertion failed: %s\nExpected slice not to contain: %s", message, value)
 	}
 }
 
@@ -194,17 +188,17 @@ func SkipIfShort(t *testing.T) {
 }
 
 // Logf logs a formatted message
-func Logf(t *testing.T, format string, args ...interface{}) {
+func Logf(t *testing.T, format string, args ...any) {
 	t.Logf(format, args...)
 }
 
 // Fatalf logs a formatted message and fails the test
-func Fatalf(t *testing.T, format string, args ...interface{}) {
+func Fatalf(t *testing.T, format string, args ...any) {
 	t.Fatalf(format, args...)
 }
 
 // Errorf logs a formatted error message
-func Errorf(t *testing.T, format string, args ...interface{}) {
+func Errorf(t *testing.T, format string, args ...any) {
 	t.Errorf(format, args...)
 }
 

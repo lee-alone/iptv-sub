@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yourusername/iptv-aggregator/models"
+	"iptv-aggregator/models"
 )
 
 // ChannelAggregator 频道聚合器

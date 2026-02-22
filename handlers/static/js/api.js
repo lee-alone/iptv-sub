@@ -140,4 +140,19 @@ const api = {
             return false;
         }
     },
+
+    /**
+     * 获取配置
+     */
+    async getConfig() {
+        const result = await this.request('GET', '/config');
+        return result.data || {};
+    },
+
+    /**
+     * 更新配置
+     */
+    async updateConfig(settings) {
+        return await this.request('PUT', '/config', settings);
+    },
 };

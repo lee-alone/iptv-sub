@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yourusername/iptv-aggregator/services"
-	"github.com/yourusername/iptv-aggregator/tests"
+	"iptv-aggregator/services"
+	"iptv-aggregator/tests"
 )
 
 // TestAddJob_NewJob tests adding a new job to the scheduler

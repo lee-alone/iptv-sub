@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/yourusername/iptv-aggregator/models"
-	"github.com/yourusername/iptv-aggregator/services"
-	"github.com/yourusername/iptv-aggregator/tests"
+	"iptv-aggregator/models"
+	"iptv-aggregator/services"
+	"iptv-aggregator/tests"
 )
 
 // TestExportM3U_ValidFormat tests exporting channels to valid M3U format

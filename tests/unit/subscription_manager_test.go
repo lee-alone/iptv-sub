@@ -5,8 +5,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/yourusername/iptv-aggregator/services"
-	"github.com/yourusername/iptv-aggregator/tests"
+	"iptv-aggregator/services"
+	"iptv-aggregator/tests"
 )
 
 // TestAddSubscription_NewSubscription tests adding a new subscription

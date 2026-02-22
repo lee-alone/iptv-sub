@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourusername/iptv-aggregator/models"
+	"iptv-aggregator/models"
 )
 
 // ChannelExporter 频道导出器

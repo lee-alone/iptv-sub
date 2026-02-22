@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yourusername/iptv-aggregator/config"
-	"github.com/yourusername/iptv-aggregator/tests"
+	"iptv-aggregator/config"
+	"iptv-aggregator/tests"
 )
 
 // TestLoadConfig_DefaultConfig tests loading default configuration
