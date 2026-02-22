@@ -375,8 +375,23 @@ func SetupRouter(
 
 		// 配置 API
 		api.GET("/config", func(c *gin.Context) {
+			// 获取本机 IP 和完整地址
+			var localIP string
+			if cfg.Host == "0.0.0.0" || cfg.Host == "" {
+				localIP = utils.GetBestLocalIP()
+			} else {
+				localIP = cfg.Host
+			}
+
+			serverAddress := utils.GetPrimaryAddress(localIP, cfg.Port)
+			playlistURL := utils.GetPlaylistURL(localIP, cfg.Port, "/playlist.m3u")
+
 			c.JSON(http.StatusOK, gin.H{
 				"data": gin.H{
+					"server_address":       serverAddress,
+					"playlist_url":         playlistURL,
+					"local_ip":             localIP,
+					"port":                 cfg.Port,
 					"update_interval":      int(cfg.UpdateInterval.Hours()),
 					"match_by":             cfg.MatchBy,
 					"similarity_threshold": int(cfg.SimilarityThreshold * 100),

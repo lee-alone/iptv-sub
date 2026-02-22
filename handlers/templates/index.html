@@ -179,10 +179,8 @@
         });
 
         function updateSubscriptionDisplay() {
-            const protocol = window.location.protocol;
-            const host = window.location.host;
-            const url = `${protocol}//${host}/playlist.m3u`;
-            document.getElementById('subscription-url').value = url;
+            const playlistUrl = configManager.getPlaylistURL();
+            document.getElementById('subscription-url').value = playlistUrl;
         }
 
         function copySubscriptionUrl() {

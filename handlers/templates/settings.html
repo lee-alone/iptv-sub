@@ -176,6 +176,22 @@
                         <h5 class="mb-0">系统信息</h5>
                     </div>
                     <div class="card-body">
+                        <div class="mb-3">
+                            <small class="text-muted">本机 IP</small>
+                            <div id="localIP" class="font-monospace">-</div>
+                        </div>
+                        <div class="mb-3">
+                            <small class="text-muted">服务器地址</small>
+                            <div id="serverAddress" class="font-monospace">-</div>
+                        </div>
+                        <div class="mb-3">
+                            <small class="text-muted">播放列表 URL</small>
+                            <div id="playlistURL" class="font-monospace text-break">-</div>
+                            <button class="btn btn-sm btn-outline-primary mt-2" onclick="copyPlaylistURL()">
+                                <i class="bi bi-clipboard"></i> 复制
+                            </button>
+                        </div>
+                        <hr>
                         <div class="mb-2">
                             <small class="text-muted">服务器状态</small>
                             <div id="serverStatus" class="badge bg-success">在线</div>
@@ -209,7 +225,22 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadSettings();
             checkServerStatus();
+            updateServerInfo();
         });
+
+        function updateServerInfo() {
+            const config = configManager.config;
+            if (config) {
+                document.getElementById('localIP').textContent = config.local_ip || '-';
+                document.getElementById('serverAddress').textContent = config.server_address || '-';
+                document.getElementById('playlistURL').textContent = config.playlist_url || '-';
+            }
+        }
+
+        function copyPlaylistURL() {
+            const url = configManager.getPlaylistURL();
+            utils.copyToClipboard(url);
+        }
 
         async function loadSettings() {
             try {

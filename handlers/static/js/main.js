@@ -154,7 +154,87 @@ document.addEventListener('DOMContentLoaded', function() {
             utils.showError('无法连接到服务器');
         }
     });
+
+    // 初始化配置管理
+    configManager.init();
 });
 
-// 导出工具函数
-window.utils = utils;
+// 配置管理模块
+const configManager = {
+    config: null,
+
+    /**
+     * 初始化配置
+     */
+    async init() {
+        try {
+            this.config = await api.getConfig();
+            this.updateUI();
+        } catch (error) {
+            console.error('Failed to load config:', error);
+        }
+    },
+
+    /**
+     * 更新 UI 中的服务器地址信息
+     */
+    updateUI() {
+        if (!this.config) return;
+
+        // 更新所有显示服务器地址的元素
+        const serverAddressElements = document.querySelectorAll('[data-server-address]');
+        serverAddressElements.forEach(el => {
+            el.textContent = this.config.server_address || 'N/A';
+        });
+
+        // 更新所有显示播放列表 URL 的元素
+        const playlistUrlElements = document.querySelectorAll('[data-playlist-url]');
+        playlistUrlElements.forEach(el => {
+            el.textContent = this.config.playlist_url || 'N/A';
+            el.href = this.config.playlist_url || '#';
+        });
+
+        // 更新所有显示本机 IP 的元素
+        const localIPElements = document.querySelectorAll('[data-local-ip]');
+        localIPElements.forEach(el => {
+            el.textContent = this.config.local_ip || 'N/A';
+        });
+
+        // 更新所有显示端口的元素
+        const portElements = document.querySelectorAll('[data-port]');
+        portElements.forEach(el => {
+            el.textContent = this.config.port || 'N/A';
+        });
+    },
+
+    /**
+     * 获取服务器地址
+     */
+    getServerAddress() {
+        return this.config?.server_address || 'http://localhost:8080';
+    },
+
+    /**
+     * 获取播放列表 URL
+     */
+    getPlaylistURL() {
+        return this.config?.playlist_url || 'http://localhost:8080/playlist.m3u';
+    },
+
+    /**
+     * 获取本机 IP
+     */
+    getLocalIP() {
+        return this.config?.local_ip || 'localhost';
+    },
+
+    /**
+     * 获取端口
+     */
+    getPort() {
+        return this.config?.port || 8080;
+    },
+};
+
+// 导出配置管理器
+window.configManager = configManager;

@@ -157,7 +157,22 @@ func main() {
 	// 启动服务器
 	go func() {
 		addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
-		logger.Info("Server listening on http://%s", addr)
+
+		// 获取本机 IP 和完整地址
+		var localIP string
+		if cfg.Host == "0.0.0.0" || cfg.Host == "" {
+			localIP = utils.GetBestLocalIP()
+		} else {
+			localIP = cfg.Host
+		}
+
+		primaryAddr := utils.GetPrimaryAddress(localIP, cfg.Port)
+		playlistURL := utils.GetPlaylistURL(localIP, cfg.Port, "/playlist.m3u")
+
+		logger.Info("Local IP: %s", localIP)
+		logger.Info("Server listening on %s", primaryAddr)
+		logger.Info("Subscription URL: %s", playlistURL)
+
 		if err := router.Run(addr); err != nil {
 			logger.Error("Server error: %v", err)
 		}
