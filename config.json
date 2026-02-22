@@ -1,12 +1,13 @@
 {
   "port": 8080,
   "host": "0.0.0.0",
+  "log_level": "info",
   "request_timeout": 30000000000,
   "stream_test_timeout": 5000000000,
   "max_test_workers": 10,
   "update_interval": 86400000000000,
   "test_interval": 86400000000000,
-  "enable_stream_test": true,
+  "enable_stream_test": false,
   "test_all_sources": false,
   "match_by": "name",
   "similarity_threshold": 0.85,
@@ -14,5 +15,8 @@
   "loop_checks": 3,
   "loop_interval": 4000000000,
   "segment_window": 5,
+  "auto_test_on_startup": false,
+  "auto_test_interval_hours": 12,
+  "test_on_subscription_update": false,
   "data_dir": "data"
 }

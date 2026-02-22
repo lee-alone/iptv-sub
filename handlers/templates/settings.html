@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
+
 <body>
     <!-- 导航栏 -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
@@ -43,110 +45,183 @@
             <div class="col-lg-8">
                 <!-- 统一的设置表单 -->
                 <form id="settingsForm">
-                <div class="card mb-4">
-                    <div class="card-header bg-light">
-                        <h5 class="mb-0">基本设置</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label class="form-label">更新间隔（小时）</label>
-                            <input type="number" class="form-control" id="updateInterval" min="1" max="168" value="24">
-                            <small class="form-text text-muted">自动更新订阅源的时间间隔</small>
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">基本设置</h5>
                         </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">频道匹配方式</label>
-                            <select class="form-select" id="matchBy">
-                                <option value="name">按名称匹配</option>
-                                <option value="tvg_id">按 TVG ID 匹配</option>
-                                <option value="both">同时按名称和 TVG ID 匹配</option>
-                            </select>
-                            <small class="form-text text-muted">用于去重和合并频道</small>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">相似度阈值（%）</label>
-                            <input type="number" class="form-control" id="similarityThreshold" min="0" max="100" value="85">
-                            <small class="form-text text-muted">频道名称相似度阈值，用于模糊匹配</small>
-                        </div>
-
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="testAllSources" checked>
-                                <label class="form-check-label" for="testAllSources">
-                                    测试所有源
-                                </label>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">更新间隔（小时）</label>
+                                <input type="number" class="form-control" id="updateInterval" min="1" max="168"
+                                    value="24">
+                                <small class="form-text text-muted">自动更新订阅源的时间间隔</small>
                             </div>
-                            <small class="form-text text-muted">如果频道有多个 URL，是否测试所有 URL</small>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- 流测试设置 -->
-                <div class="card mb-4">
-                    <div class="card-header bg-light">
-                        <h5 class="mb-0">流测试设置</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label class="form-label">测试超时（秒）</label>
-                            <input type="number" class="form-control" id="testTimeout" min="1" max="60" value="10">
-                            <small class="form-text text-muted">单个频道测试的超时时间</small>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">最大并发数</label>
-                            <input type="number" class="form-control" id="maxWorkers" min="1" max="100" value="10">
-                            <small class="form-text text-muted">同时测试的最大频道数</small>
-                        </div>
-
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="deepCheck" checked>
-                                <label class="form-check-label" for="deepCheck">
-                                    深度检测
-                                </label>
+                            <div class="mb-3">
+                                <label class="form-label">频道匹配方式</label>
+                                <select class="form-select" id="matchBy">
+                                    <option value="name">按名称匹配</option>
+                                    <option value="tvg_id">按 TVG ID 匹配</option>
+                                    <option value="both">同时按名称和 TVG ID 匹配</option>
+                                </select>
+                                <small class="form-text text-muted">用于去重和合并频道</small>
                             </div>
-                            <small class="form-text text-muted">进行多次检测以确保频道稳定性</small>
-                        </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">检测次数</label>
-                            <input type="number" class="form-control" id="loopChecks" min="2" max="10" value="3">
-                            <small class="form-text text-muted">深度检测时的检测次数</small>
-                        </div>
+                            <div class="mb-3">
+                                <label class="form-label">相似度阈值（%）</label>
+                                <input type="number" class="form-control" id="similarityThreshold" min="0" max="100"
+                                    value="85">
+                                <small class="form-text text-muted">频道名称相似度阈值，用于模糊匹配</small>
+                            </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">检测间隔（秒）</label>
-                            <input type="number" class="form-control" id="loopInterval" min="1" max="10" step="0.5" value="4">
-                            <small class="form-text text-muted">深度检测时每次检测的间隔</small>
+                            <div class="mb-3">
+                                <label class="form-label">日志级别</label>
+                                <select class="form-select" id="logLevel">
+                                    <option value="debug">DEBUG (详细调试)</option>
+                                    <option value="info">INFO (普通信息)</option>
+                                    <option value="warn">WARN (仅警告)</option>
+                                    <option value="error">ERROR (仅错误)</option>
+                                </select>
+                                <small class="form-text text-muted">控制控制台输出内容的详细程度</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="testAllSources" checked>
+                                    <label class="form-check-label" for="testAllSources">
+                                        测试所有源
+                                    </label>
+                                </div>
+                                <small class="form-text text-muted">如果频道有多个 URL，是否测试所有 URL</small>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- 关于 -->
-                <div class="card">
-                    <div class="card-header bg-light">
-                        <h5 class="mb-0">关于</h5>
-                    </div>
-                    <div class="card-body">
-                        <p><strong>IPTV M3U 聚合器</strong></p>
-                        <p>版本：1.0.0</p>
-                        <p>一个强大的 IPTV 频道聚合和管理工具，支持多源聚合、频道去重、流测试等功能。</p>
-                        <p>
-                            <a href="https://github.com" target="_blank" class="btn btn-sm btn-outline-primary">
-                                <i class="bi bi-github"></i> GitHub
-                            </a>
-                        </p>
-                    </div>
-                </div>
+                    <!-- 流测试设置 -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">流测试设置</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- 启用流测试 -->
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="enableStreamTest" checked>
+                                    <label class="form-check-label" for="enableStreamTest">
+                                        启用流测试功能
+                                    </label>
+                                </div>
+                                <small class="form-text text-muted">禁用后，所有频道将显示未测试状态，定时测试任务不会执行</small>
+                            </div>
 
-                <!-- 统一的保存按钮 -->
-                <div class="mt-4">
-                    <button type="submit" class="btn btn-primary btn-lg w-100">
-                        <i class="bi bi-check"></i> 保存所有设置
-                    </button>
-                </div>
+                            <hr>
+
+                            <!-- 定时测试间隔 -->
+                            <div class="mb-3">
+                                <label class="form-label">定时测试间隔（小时）</label>
+                                <input type="number" class="form-control" id="testInterval" min="1" max="720"
+                                    value="24">
+                                <small class="form-text text-muted">
+                                    系统定时自动测试所有频道的间隔时间。<br>
+                                    <strong>⚠️ 修改此设置后需要重启服务才能生效。</strong>
+                                </small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">测试超时（秒）</label>
+                                <input type="number" class="form-control" id="testTimeout" min="1" max="60" value="10">
+                                <small class="form-text text-muted">单个频道测试的超时时间</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">最大并发数</label>
+                                <input type="number" class="form-control" id="maxWorkers" min="1" max="100" value="10">
+                                <small class="form-text text-muted">同时测试的最大频道数</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="deepCheck" checked>
+                                    <label class="form-check-label" for="deepCheck">
+                                        深度检测
+                                    </label>
+                                </div>
+                                <small class="form-text text-muted">进行多次检测以确保频道稳定性</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">检测次数</label>
+                                <input type="number" class="form-control" id="loopChecks" min="2" max="10" value="3">
+                                <small class="form-text text-muted">深度检测时的检测次数</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">检测间隔（秒）</label>
+                                <input type="number" class="form-control" id="loopInterval" min="1" max="10" step="0.5"
+                                    value="4">
+                                <small class="form-text text-muted">深度检测时每次检测的间隔</small>
+                            </div>
+
+                            <hr>
+
+                            <!-- 启动时自动测试 -->
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="autoTestOnStartup">
+                                    <label class="form-check-label" for="autoTestOnStartup">
+                                        启动时检测并自动测试
+                                    </label>
+                                </div>
+                                <small class="form-text text-muted">
+                                    服务启动时，如果距离上次测试超过以下"启动测试阈值"，则自动运行测试
+                                </small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">启动测试阈值（小时）</label>
+                                <input type="number" class="form-control" id="autoTestIntervalHours" min="1" max="720"
+                                    value="12">
+                                <small class="form-text text-muted">
+                                    建议设置为定时测试间隔的 50-100%（如定时测试间隔为 24 小时，可设置为 12-24 小时）
+                                </small>
+                            </div>
+
+                            <!-- 更新订阅后自动测试 -->
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="testOnSubscriptionUpdate">
+                                    <label class="form-check-label" for="testOnSubscriptionUpdate">
+                                        更新订阅后自动测试
+                                    </label>
+                                </div>
+                                <small class="form-text text-muted">手动或定时更新订阅源后，自动进行流测试</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 关于 -->
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">关于</h5>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>IPTV M3U 聚合器</strong></p>
+                            <p>版本：1.0.0</p>
+                            <p>一个强大的 IPTV 频道聚合和管理工具，支持多源聚合、频道去重、流测试等功能。</p>
+                            <p>
+                                <a href="https://github.com" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-github"></i> GitHub
+                                </a>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 统一的保存按钮 -->
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg w-100">
+                            <i class="bi bi-check"></i> 保存所有设置
+                        </button>
+                    </div>
                 </form>
             </div>
 
@@ -164,8 +239,11 @@
                         <button class="btn btn-success w-100 mb-2" onclick="testNow()">
                             <i class="bi bi-lightning"></i> 立即测试
                         </button>
-                        <button class="btn btn-info w-100" onclick="exportNow()">
+                        <button class="btn btn-info w-100 mb-2" onclick="exportNow()">
                             <i class="bi bi-download"></i> 立即导出
+                        </button>
+                        <button class="btn btn-danger w-100" onclick="restartNow()">
+                            <i class="bi bi-power"></i> 重新启动
                         </button>
                     </div>
                 </div>
@@ -221,11 +299,18 @@
     <script src="/static/js/api.js"></script>
     <script src="/static/js/main.js"></script>
     <script>
+        // 保存原始的 TestInterval 和 LogLevel 值，用于检测是否修改
+        let originalTestInterval = 24;
+        let originalLogLevel = 'info';
+
         // 页面加载时加载设置
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             loadSettings();
             checkServerStatus();
-            updateServerInfo();
+            // 等待 configManager 初始化完成后再更新服务器信息
+            configManager.init().then(() => {
+                updateServerInfo();
+            });
         });
 
         function updateServerInfo() {
@@ -246,16 +331,28 @@
             try {
                 // 从后端 API 加载配置
                 const config = await api.getConfig();
-                
+
                 document.getElementById('updateInterval').value = config.update_interval || 24;
+                document.getElementById('testInterval').value = config.test_interval || 24;
                 document.getElementById('matchBy').value = config.match_by || 'name';
                 document.getElementById('similarityThreshold').value = config.similarity_threshold || 85;
                 document.getElementById('testAllSources').checked = config.test_all_sources !== false;
+                document.getElementById('enableStreamTest').checked = config.enable_stream_test !== false;
                 document.getElementById('testTimeout').value = config.stream_test_timeout || 10;
                 document.getElementById('maxWorkers').value = config.max_test_workers || 10;
                 document.getElementById('deepCheck').checked = config.deep_check !== false;
                 document.getElementById('loopChecks').value = config.loop_checks || 3;
                 document.getElementById('loopInterval').value = config.loop_interval || 4;
+                document.getElementById('logLevel').value = config.log_level || 'info';
+
+                // 启动测试相关字段
+                document.getElementById('autoTestOnStartup').checked = config.auto_test_on_startup || false;
+                document.getElementById('autoTestIntervalHours').value = config.auto_test_interval_hours || 12;
+                document.getElementById('testOnSubscriptionUpdate').checked = config.test_on_subscription_update || false;
+
+                // 保存原始值
+                originalTestInterval = config.test_interval || 24;
+                originalLogLevel = config.log_level || 'info';
             } catch (error) {
                 console.error('Failed to load settings:', error);
                 utils.showError('加载设置失败：' + error.message);
@@ -265,26 +362,44 @@
         async function saveSettings() {
             const settings = {
                 update_interval: parseInt(document.getElementById('updateInterval').value),
+                test_interval: parseInt(document.getElementById('testInterval').value),
                 match_by: document.getElementById('matchBy').value,
                 similarity_threshold: parseInt(document.getElementById('similarityThreshold').value),
                 test_all_sources: document.getElementById('testAllSources').checked,
+                enable_stream_test: document.getElementById('enableStreamTest').checked,
                 stream_test_timeout: parseInt(document.getElementById('testTimeout').value),
                 max_test_workers: parseInt(document.getElementById('maxWorkers').value),
                 deep_check: document.getElementById('deepCheck').checked,
                 loop_checks: parseInt(document.getElementById('loopChecks').value),
-                loop_interval: parseInt(document.getElementById('loopInterval').value),
+                loop_interval: parseFloat(document.getElementById('loopInterval').value),
+                auto_test_on_startup: document.getElementById('autoTestOnStartup').checked,
+                auto_test_interval_hours: parseInt(document.getElementById('autoTestIntervalHours').value),
+                test_on_subscription_update: document.getElementById('testOnSubscriptionUpdate').checked,
+                log_level: document.getElementById('logLevel').value,
             };
-            
+
             try {
                 await api.updateConfig(settings);
-                utils.showSuccess('设置已保存');
+
+                // 检测是否修改了需要重启才能生效的配置
+                const testIntervalChanged = settings.test_interval !== originalTestInterval;
+                const logLevelChanged = settings.log_level !== originalLogLevel;
+
+                if (testIntervalChanged || logLevelChanged) {
+                    let msg = '⚠️ ' + (testIntervalChanged ? '定时测试间隔 ' : '') +
+                        (testIntervalChanged && logLevelChanged ? '和 ' : '') +
+                        (logLevelChanged ? '日志级别 ' : '') + '已修改，重启服务后生效';
+                    utils.showWarning(msg, 6000);
+                } else {
+                    utils.showSuccess('设置已保存');
+                }
             } catch (error) {
                 console.error('Failed to save settings:', error);
                 utils.showError('保存失败：' + error.message);
             }
         }
 
-        document.getElementById('settingsForm').addEventListener('submit', function(e) {
+        document.getElementById('settingsForm').addEventListener('submit', function (e) {
             e.preventDefault();
             saveSettings();
         });
@@ -302,26 +417,79 @@
             });
         }
 
-        function updateNow() {
+        async function updateNow() {
             if (!utils.confirm('确定要立即更新所有订阅源吗？')) {
                 return;
             }
-            utils.showSuccess('更新任务已启动');
-            // 这里可以调用 API 进行更新
+            try {
+                utils.showSuccess('更新任务已启动...');
+                const result = await api.updateSubscriptions();
+                utils.showSuccess('更新完成！');
+                console.log('Update result:', result);
+            } catch (error) {
+                utils.showError('更新失败：' + error.message);
+            }
         }
 
-        function testNow() {
+        async function testNow() {
             if (!utils.confirm('确定要立即测试所有频道吗？')) {
                 return;
             }
-            utils.showSuccess('测试任务已启动');
-            // 这里可以调用 API 进行测试
+            try {
+                utils.showSuccess('测试任务已启动，请稍候...');
+                const testAllSources = document.getElementById('testAllSources').checked;
+                await api.testChannels(testAllSources);
+                utils.showSuccess('测试完成！');
+            } catch (error) {
+                utils.showError('测试失败：' + error.message);
+            }
         }
 
-        function exportNow() {
-            utils.showSuccess('导出任务已启动');
-            // 这里可以调用 API 进行导出
+        async function exportNow() {
+            try {
+                utils.showSuccess('正在生成导出文件...');
+                const result = await api.exportChannels('m3u', true);
+                utils.showSuccess('导出完成！');
+                // 自动下载或显示链接
+                if (result.filepath) {
+                    const url = result.filepath.startsWith('http') ? result.filepath : '/' + result.filepath;
+                    window.open(url, '_blank');
+                }
+            } catch (error) {
+                utils.showError('导出失败：' + error.message);
+            }
+        }
+
+        async function restartNow() {
+            if (!utils.confirm('确定要重新启动软件吗？此操作将断开当前所有连接。')) {
+                return;
+            }
+            try {
+                utils.showSuccess('正在发送重启指令...');
+                await api.restart();
+
+                // 显示重启进度
+                let countdown = 5;
+                const timer = setInterval(() => {
+                    if (countdown <= 0) {
+                        clearInterval(timer);
+                        window.location.reload();
+                    } else {
+                        utils.showInfo(`软件正在重启，正在尝试重新连接 (${countdown}s)...`);
+                        countdown--;
+                    }
+                }, 1000);
+            } catch (error) {
+                // 如果是网络错误，说明可能已经在重启了，这通常是正常的
+                if (error.message.includes('fetch') || error.message.includes('Network')) {
+                    utils.showInfo('软件正在重启，请稍候手动刷新页面...');
+                    setTimeout(() => window.location.reload(), 5000);
+                } else {
+                    utils.showError('重启指令发送失败：' + error.message);
+                }
+            }
         }
     </script>
 </body>
+
 </html>

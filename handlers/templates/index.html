@@ -173,7 +173,10 @@
         document.addEventListener('DOMContentLoaded', function () {
             loadStats();
             loadSubscriptions();
-            updateSubscriptionDisplay();
+            // 等待 configManager 初始化完成后再更新订阅地址
+            configManager.init().then(() => {
+                updateSubscriptionDisplay();
+            });
             // 每 5 秒刷新一次统计信息
             setInterval(loadStats, 5000);
         });

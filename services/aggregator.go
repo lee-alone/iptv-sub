@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"iptv-aggregator/models"
+	"iptv-aggregator/utils"
 )
 
 // ChannelAggregator 频道聚合器
@@ -20,6 +21,7 @@ type ChannelAggregator struct {
 	tvgIDIndex map[string]*models.Channel   // tvg-id 索引，用于O(1)查找
 	nameIndex  map[string][]*models.Channel // 名称索引，用于快速查找相似频道
 	mu         sync.RWMutex
+	logger     *utils.Logger
 }
 
 // NewChannelAggregator 创建新的频道聚合器
@@ -30,6 +32,7 @@ func NewChannelAggregator(dataDir string) *ChannelAggregator {
 		channels:   make(map[string]*models.Channel),
 		tvgIDIndex: make(map[string]*models.Channel),
 		nameIndex:  make(map[string][]*models.Channel),
+		logger:     utils.NewLogger(),
 	}
 
 	// 确保数据目录存在
@@ -43,7 +46,7 @@ func NewChannelAggregator(dataDir string) *ChannelAggregator {
 
 // AggregateChannels 聚合频道 - 优化版本，使用索引加速查询
 func (ca *ChannelAggregator) AggregateChannels(newChannels []*models.Channel, matchBy string, similarityThreshold float64) (int, int, int, error) {
-	fmt.Printf("Aggregator: Aggregating %d new channels (matchBy: %s, threshold: %.2f)\n", len(newChannels), matchBy, similarityThreshold)
+	ca.logger.Debug("Aggregating %d new channels (matchBy: %s, threshold: %.2f)", len(newChannels), matchBy, similarityThreshold)
 	if len(newChannels) == 0 {
 		return 0, 0, 0, nil
 	}
@@ -384,6 +387,38 @@ func (ca *ChannelAggregator) GetUntestedChannels() []*models.Channel {
 	}
 
 	return untested
+}
+
+// HasTestResults 检查是否有有效的测试结果
+func (ca *ChannelAggregator) HasTestResults() bool {
+	ca.mu.RLock()
+	defer ca.mu.RUnlock()
+
+	for _, ch := range ca.channels {
+		if ch.TestResults != nil && ch.TestResults.Status != "untested" {
+			return true
+		}
+	}
+
+	return false
+}
+
+// GetLastTestTime 获取最后测试时间
+func (ca *ChannelAggregator) GetLastTestTime() time.Time {
+	ca.mu.RLock()
+	defer ca.mu.RUnlock()
+
+	var lastTime time.Time
+
+	for _, ch := range ca.channels {
+		if ch.TestResults != nil && !ch.TestResults.TestedAt.IsZero() {
+			if ch.TestResults.TestedAt.After(lastTime) {
+				lastTime = ch.TestResults.TestedAt
+			}
+		}
+	}
+
+	return lastTime
 }
 
 // ClearChannels 清空所有频道

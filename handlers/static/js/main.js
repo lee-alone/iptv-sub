@@ -47,6 +47,13 @@ const utils = {
     },
 
     /**
+     * 显示普通提示
+     */
+    showInfo(message) {
+        this.showAlert(message, 'info');
+    },
+
+    /**
      * 显示提示信息
      */
     showAlert(message, type = 'info') {
@@ -57,10 +64,10 @@ const utils = {
             ${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
-        
+
         const container = document.querySelector('.container-fluid') || document.body;
         container.insertBefore(alertDiv, container.firstChild);
-        
+
         // 3 秒后自动关闭
         setTimeout(() => {
             alertDiv.remove();
@@ -136,7 +143,7 @@ const utils = {
      */
     throttle(func, limit) {
         let inThrottle;
-        return function(...args) {
+        return function (...args) {
             if (!inThrottle) {
                 func.apply(this, args);
                 inThrottle = true;
@@ -147,7 +154,7 @@ const utils = {
 };
 
 // 页面加载完成后的初始化
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // 检查 API 连接
     api.healthCheck().then(ok => {
         if (!ok) {
@@ -162,17 +169,27 @@ document.addEventListener('DOMContentLoaded', function() {
 // 配置管理模块
 const configManager = {
     config: null,
+    initPromise: null,
 
     /**
      * 初始化配置
      */
     async init() {
-        try {
-            this.config = await api.getConfig();
-            this.updateUI();
-        } catch (error) {
-            console.error('Failed to load config:', error);
+        if (this.initPromise) {
+            return this.initPromise;
         }
+
+        this.initPromise = (async () => {
+            try {
+                this.config = await api.getConfig();
+                this.updateUI();
+                console.log('configManager initialized:', this.config);
+            } catch (error) {
+                console.error('Failed to load config:', error);
+            }
+        })();
+
+        return this.initPromise;
     },
 
     /**

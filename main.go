@@ -3,14 +3,18 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"iptv-aggregator/config"
 	"iptv-aggregator/handlers"
 	"iptv-aggregator/services"
 	"iptv-aggregator/utils"
+
+	"github.com/gin-gonic/gin"
 )
 
 var (
@@ -58,6 +62,11 @@ func main() {
 		cfg.Port = *port
 	}
 
+	// 根据配置设置全局日志级别
+	level := utils.ParseLevel(cfg.LogLevel)
+	utils.SetGlobalLevel(level)
+	logger.SetLevel(level)
+
 	logger.Info("Configuration loaded successfully")
 	logger.Info("Server will listen on %s:%d", cfg.Host, cfg.Port)
 
@@ -73,14 +82,52 @@ func main() {
 
 	logger.Info("Services initialized successfully")
 
-	// 如果启用了流测试，在启动时重置所有状态，确保不会显示旧的离线/在线数据
+	// 如果启用了流测试，在启动时根据配置决定是否进行测试
 	if cfg.EnableStreamTest {
-		logger.Info("Stream testing enabled, resetting all channel states for a clean start...")
-		aggregator.ResetTestResults()
+		channels := aggregator.GetAllChannels()
+		hasResults := aggregator.HasTestResults()
+		lastTestTime := aggregator.GetLastTestTime()
+
+		// 判断是否需要启动时自动测试
+		shouldAutoTest := cfg.AutoTestOnStartup &&
+			(len(channels) == 0 || !hasResults ||
+				time.Since(lastTestTime) > time.Duration(cfg.AutoTestIntervalHours)*time.Hour)
+
+		if shouldAutoTest {
+			logger.Info("Auto-testing channels on startup (no results or results expired)...")
+			aggregator.ResetTestResults()
+			tested, err := tester.BatchTest(channels, cfg.TestAllSources)
+			if err != nil {
+				logger.Error("Startup auto-test failed: %v", err)
+			} else {
+				logger.Info("Startup auto-test completed: %d channels tested", len(tested))
+				aggregator.Save()
+			}
+		} else {
+			if hasResults {
+				logger.Info("Skipping startup test, using existing results (last test: %v ago)",
+					time.Since(lastTestTime).Round(time.Minute))
+			} else {
+				logger.Info("Skipping startup test (auto_test_on_startup disabled)")
+			}
+		}
 	}
 
 	// 初始化 HTTP 服务器
 	logger.Info("Setting up HTTP server...")
+
+	// 根据日志级别设置 Gin 模式
+	if cfg.LogLevel == "debug" {
+		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode) // release 模式不会输出路由信息
+	}
+
+	// 禁用 Gin 的默认输出，除非是 debug 模式
+	if cfg.LogLevel != "debug" {
+		gin.DefaultWriter = io.Discard
+	}
+
 	router := handlers.SetupRouter(
 		subscriptionMgr,
 		parser,
@@ -89,6 +136,7 @@ func main() {
 		scheduler,
 		exporter,
 		cfg,
+		logger,
 	)
 
 	// 注册定时任务
@@ -154,25 +202,24 @@ func main() {
 		os.Exit(1)
 	}
 
+	// 获取本机 IP 和完整地址（在启动服务器前）
+	var localIP string
+	if cfg.Host == "0.0.0.0" || cfg.Host == "" {
+		localIP = utils.GetBestLocalIP()
+	} else {
+		localIP = cfg.Host
+	}
+
+	primaryAddr := utils.GetPrimaryAddress(localIP, cfg.Port)
+	playlistURL := utils.GetPlaylistURL(localIP, cfg.Port, "/playlist.m3u")
+
+	logger.Info("Local IP: %s", localIP)
+	logger.Info("Server listening on %s", primaryAddr)
+	logger.Info("Subscription URL: %s", playlistURL)
+
 	// 启动服务器
 	go func() {
 		addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
-
-		// 获取本机 IP 和完整地址
-		var localIP string
-		if cfg.Host == "0.0.0.0" || cfg.Host == "" {
-			localIP = utils.GetBestLocalIP()
-		} else {
-			localIP = cfg.Host
-		}
-
-		primaryAddr := utils.GetPrimaryAddress(localIP, cfg.Port)
-		playlistURL := utils.GetPlaylistURL(localIP, cfg.Port, "/playlist.m3u")
-
-		logger.Info("Local IP: %s", localIP)
-		logger.Info("Server listening on %s", primaryAddr)
-		logger.Info("Subscription URL: %s", playlistURL)
-
 		if err := router.Run(addr); err != nil {
 			logger.Error("Server error: %v", err)
 		}

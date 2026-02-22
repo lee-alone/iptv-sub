@@ -13,6 +13,9 @@ type Config struct {
 	Port int    `json:"port"`
 	Host string `json:"host"`
 
+	// 日志配置
+	LogLevel string `json:"log_level"` // debug, info, warn, error
+
 	// 请求配置
 	RequestTimeout    time.Duration `json:"request_timeout"`
 	StreamTestTimeout time.Duration `json:"stream_test_timeout"`
@@ -34,6 +37,11 @@ type Config struct {
 	LoopInterval  time.Duration `json:"loop_interval"`
 	SegmentWindow int           `json:"segment_window"`
 
+	// 启动测试配置
+	AutoTestOnStartup        bool `json:"auto_test_on_startup"`        // 是否启动时自动测试
+	AutoTestIntervalHours    int  `json:"auto_test_interval_hours"`    // 启动自动测试的时间阈值
+	TestOnSubscriptionUpdate bool `json:"test_on_subscription_update"` // 更新订阅后是否自动测试
+
 	// 数据配置
 	DataDir string `json:"data_dir"`
 }
@@ -41,22 +49,26 @@ type Config struct {
 // DefaultConfig 返回默认配置
 func DefaultConfig() *Config {
 	return &Config{
-		Port:                8080,
-		Host:                "0.0.0.0",
-		RequestTimeout:      30 * time.Second,
-		StreamTestTimeout:   5 * time.Second,
-		MaxTestWorkers:      10,
-		UpdateInterval:      24 * time.Hour,
-		TestInterval:        24 * time.Hour,
-		EnableStreamTest:    true,
-		TestAllSources:      false,
-		MatchBy:             "name",
-		SimilarityThreshold: 0.85,
-		DeepCheck:           true,
-		LoopChecks:          3,
-		LoopInterval:        4 * time.Second,
-		SegmentWindow:       5,
-		DataDir:             "data",
+		Port:                     8080,
+		Host:                     "0.0.0.0",
+		LogLevel:                 "info", // 默认 info 级别
+		RequestTimeout:           30 * time.Second,
+		StreamTestTimeout:        5 * time.Second,
+		MaxTestWorkers:           10,
+		UpdateInterval:           24 * time.Hour,
+		TestInterval:             24 * time.Hour,
+		EnableStreamTest:         false, // 开发时默认禁用，避免频繁重启时自动测试
+		TestAllSources:           false,
+		MatchBy:                  "name",
+		SimilarityThreshold:      0.85,
+		DeepCheck:                true,
+		LoopChecks:               3,
+		LoopInterval:             4 * time.Second,
+		SegmentWindow:            5,
+		AutoTestOnStartup:        false,
+		AutoTestIntervalHours:    12,
+		TestOnSubscriptionUpdate: false,
+		DataDir:                  "data",
 	}
 }
 
@@ -129,6 +141,11 @@ func (c *Config) Validate() error {
 
 	if c.MatchBy != "name" && c.MatchBy != "tvg_id" && c.MatchBy != "both" {
 		return fmt.Errorf("invalid match_by: %s", c.MatchBy)
+	}
+
+	// 验证启动测试配置
+	if c.AutoTestIntervalHours < 1 {
+		c.AutoTestIntervalHours = 12 // 默认 12 小时
 	}
 
 	return nil

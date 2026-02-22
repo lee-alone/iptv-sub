@@ -10,12 +10,14 @@ import (
 	"time"
 
 	"iptv-aggregator/models"
+	"iptv-aggregator/utils"
 )
 
 // M3UParser M3U 文件解析器
 type M3UParser struct {
 	timeout time.Duration
 	client  *http.Client
+	logger  *utils.Logger
 }
 
 // NewM3UParser 创建新的 M3U 解析器
@@ -25,12 +27,13 @@ func NewM3UParser(timeout time.Duration) *M3UParser {
 		client: &http.Client{
 			Timeout: timeout,
 		},
+		logger: utils.NewLogger(),
 	}
 }
 
 // FetchM3U 从 URL 获取 M3U 文件
 func (p *M3UParser) FetchM3U(url string) (string, error) {
-	fmt.Printf("Parser: Fetching M3U from %s\n", url)
+	p.logger.Debug("Fetching M3U from %s", url)
 	ctx, cancel := context.WithTimeout(context.Background(), p.timeout)
 	defer cancel()
 

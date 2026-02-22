@@ -86,9 +86,6 @@ func (s *Scheduler) AddJob(id string, schedule string, fn func() error) error {
 
 	s.jobs[id] = job
 
-	// 如果调度器已启动，立即启动新任务
-	go s.runJob(job)
-
 	return nil
 }
 

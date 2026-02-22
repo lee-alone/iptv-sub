@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -32,8 +33,66 @@ func SetupRouter(
 	scheduler *services.Scheduler,
 	exporter *services.ChannelExporter,
 	cfg *config.Config,
+	logger *utils.Logger,
 ) *gin.Engine {
-	router := gin.Default()
+	router := gin.New()
+
+	// 注册 Recovery 中间件
+	router.Use(gin.Recovery())
+
+	// 自定义日志中间件：根据系统 LogLevel 控制输出
+	router.Use(func(c *gin.Context) {
+		start := time.Now()
+		path := c.Request.URL.Path
+		rawQuery := c.Request.URL.RawQuery
+
+		// 处理请求
+		c.Next()
+
+		// 获取响应状态和耗时
+		status := c.Writer.Status()
+		latency := time.Since(start)
+		clientIP := c.ClientIP()
+		method := c.Request.Method
+
+		currentLevel := logger.GetLevel()
+
+		// 1. ERROR 级别：仅输出 5xx 错误
+		if currentLevel >= utils.ERROR {
+			if status >= 500 {
+				logger.Error("[GIN] %d | %v | %s | %s %s", status, latency, clientIP, method, path)
+			}
+			return
+		}
+
+		// 2. WARN 级别：输出 4xx 和 5xx 错误
+		if currentLevel == utils.WARN {
+			if status >= 400 {
+				logger.Warn("[GIN] %d | %v | %s | %s %s", status, latency, clientIP, method, path)
+			}
+			return
+		}
+
+		// 3. INFO 级别：常规业务输出，但过滤高频噪音
+		if currentLevel == utils.INFO {
+			// 过滤静态文件和健康检查的正常 200 请求
+			isNoise := (path == "/health" ||
+				path == "/favicon.ico" ||
+				len(path) > 7 && path[:8] == "/static/")
+
+			if isNoise && status < 400 {
+				return
+			}
+			logger.Info("[GIN] %d | %v | %s | %s %s", status, latency, clientIP, method, path)
+			return
+		}
+
+		// 4. DEBUG 级别：输出所有细节
+		if rawQuery != "" {
+			path = path + "?" + rawQuery
+		}
+		logger.Debug("[GIN] %d | %13v | %15s | %-7s %s", status, latency, clientIP, method, path)
+	})
 
 	// 添加 CORS 中间件
 	router.Use(func(c *gin.Context) {
@@ -266,7 +325,6 @@ func SetupRouter(
 			}
 
 			// 1. 立即重置所有频道为未测试状态
-			logger := utils.NewLogger()
 			logger.Info("Global test triggered, resetting all channel results")
 			aggregator.ResetTestResults()
 
@@ -332,6 +390,22 @@ func SetupRouter(
 				logger.Info("Subscription %s updated: +%d, ~%d", sub.Name, added, updated)
 			}
 
+			// 更新完成后，如果配置了自动测试，则执行测试
+			if cfg.TestOnSubscriptionUpdate && cfg.EnableStreamTest {
+				logger.Info("Auto-testing channels after subscription update...")
+				allChannels := aggregator.GetAllChannels()
+				if len(allChannels) > 0 {
+					aggregator.ResetTestResults()
+					tested, err := tester.BatchTest(allChannels, cfg.TestAllSources)
+					if err != nil {
+						logger.Error("Auto-test after subscription update failed: %v", err)
+					} else {
+						logger.Info("Auto-test after subscription update completed: %d channels tested", len(tested))
+						aggregator.Save()
+					}
+				}
+			}
+
 			logger.Info("Update completed, processed %d subscriptions", len(results))
 			c.JSON(http.StatusOK, gin.H{
 				"message": "update completed",
@@ -388,34 +462,46 @@ func SetupRouter(
 
 			c.JSON(http.StatusOK, gin.H{
 				"data": gin.H{
-					"server_address":       serverAddress,
-					"playlist_url":         playlistURL,
-					"local_ip":             localIP,
-					"port":                 cfg.Port,
-					"update_interval":      int(cfg.UpdateInterval.Hours()),
-					"match_by":             cfg.MatchBy,
-					"similarity_threshold": int(cfg.SimilarityThreshold * 100),
-					"test_all_sources":     cfg.TestAllSources,
-					"stream_test_timeout":  int(cfg.StreamTestTimeout.Seconds()),
-					"max_test_workers":     cfg.MaxTestWorkers,
-					"deep_check":           cfg.DeepCheck,
-					"loop_checks":          cfg.LoopChecks,
-					"loop_interval":        int(cfg.LoopInterval.Seconds()),
+					"server_address":              serverAddress,
+					"playlist_url":                playlistURL,
+					"local_ip":                    localIP,
+					"port":                        cfg.Port,
+					"update_interval":             int(cfg.UpdateInterval.Hours()),
+					"test_interval":               int(cfg.TestInterval.Hours()),
+					"match_by":                    cfg.MatchBy,
+					"similarity_threshold":        int(cfg.SimilarityThreshold * 100),
+					"test_all_sources":            cfg.TestAllSources,
+					"enable_stream_test":          cfg.EnableStreamTest,
+					"stream_test_timeout":         int(cfg.StreamTestTimeout.Seconds()),
+					"max_test_workers":            cfg.MaxTestWorkers,
+					"deep_check":                  cfg.DeepCheck,
+					"loop_checks":                 cfg.LoopChecks,
+					"loop_interval":               int(cfg.LoopInterval.Seconds()),
+					"auto_test_on_startup":        cfg.AutoTestOnStartup,
+					"auto_test_interval_hours":    cfg.AutoTestIntervalHours,
+					"test_on_subscription_update": cfg.TestOnSubscriptionUpdate,
+					"log_level":                   cfg.LogLevel,
 				},
 			})
 		})
 
 		api.PUT("/config", func(c *gin.Context) {
 			var req struct {
-				UpdateInterval      int    `json:"update_interval"`
-				MatchBy             string `json:"match_by"`
-				SimilarityThreshold int    `json:"similarity_threshold"`
-				TestAllSources      bool   `json:"test_all_sources"`
-				StreamTestTimeout   int    `json:"stream_test_timeout"`
-				MaxTestWorkers      int    `json:"max_test_workers"`
-				DeepCheck           bool   `json:"deep_check"`
-				LoopChecks          int    `json:"loop_checks"`
-				LoopInterval        int    `json:"loop_interval"`
+				UpdateInterval           int     `json:"update_interval"`
+				TestInterval             int     `json:"test_interval"`
+				MatchBy                  string  `json:"match_by"`
+				SimilarityThreshold      int     `json:"similarity_threshold"`
+				TestAllSources           bool    `json:"test_all_sources"`
+				EnableStreamTest         bool    `json:"enable_stream_test"`
+				StreamTestTimeout        int     `json:"stream_test_timeout"`
+				MaxTestWorkers           int     `json:"max_test_workers"`
+				DeepCheck                bool    `json:"deep_check"`
+				LoopChecks               int     `json:"loop_checks"`
+				LoopInterval             float64 `json:"loop_interval"`
+				AutoTestOnStartup        bool    `json:"auto_test_on_startup"`
+				AutoTestIntervalHours    int     `json:"auto_test_interval_hours"`
+				TestOnSubscriptionUpdate bool    `json:"test_on_subscription_update"`
+				LogLevel                 string  `json:"log_level"`
 			}
 
 			if err := c.ShouldBindJSON(&req); err != nil {
@@ -431,15 +517,36 @@ func SetupRouter(
 				}
 			}
 
+			// 验证 UpdateInterval
+			if req.UpdateInterval > 0 && req.UpdateInterval < 1 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "update_interval must be >= 1"})
+				return
+			}
+
+			// 验证 TestInterval
+			if req.TestInterval > 0 && req.TestInterval < 1 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "test_interval must be >= 1"})
+				return
+			}
+
 			// 验证 MaxTestWorkers 上限
 			if req.MaxTestWorkers > 0 && req.MaxTestWorkers > 100 {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "max_test_workers must be <= 100"})
 				return
 			}
 
+			// 验证 AutoTestIntervalHours
+			if req.AutoTestIntervalHours > 0 && req.AutoTestIntervalHours < 1 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "auto_test_interval_hours must be >= 1"})
+				return
+			}
+
 			// 更新配置对象
 			if req.UpdateInterval > 0 {
 				cfg.UpdateInterval = time.Duration(req.UpdateInterval) * time.Hour
+			}
+			if req.TestInterval > 0 {
+				cfg.TestInterval = time.Duration(req.TestInterval) * time.Hour
 			}
 			if req.MatchBy != "" {
 				cfg.MatchBy = req.MatchBy
@@ -448,6 +555,7 @@ func SetupRouter(
 				cfg.SimilarityThreshold = float64(req.SimilarityThreshold) / 100.0
 			}
 			cfg.TestAllSources = req.TestAllSources
+			cfg.EnableStreamTest = req.EnableStreamTest
 			if req.StreamTestTimeout > 0 {
 				cfg.StreamTestTimeout = time.Duration(req.StreamTestTimeout) * time.Second
 				tester.SetStreamTestTimeout(cfg.StreamTestTimeout)
@@ -461,7 +569,15 @@ func SetupRouter(
 				cfg.LoopChecks = req.LoopChecks
 			}
 			if req.LoopInterval > 0 {
-				cfg.LoopInterval = time.Duration(req.LoopInterval) * time.Second
+				cfg.LoopInterval = time.Duration(req.LoopInterval * float64(time.Second))
+			}
+			cfg.AutoTestOnStartup = req.AutoTestOnStartup
+			if req.AutoTestIntervalHours > 0 {
+				cfg.AutoTestIntervalHours = req.AutoTestIntervalHours
+			}
+			cfg.TestOnSubscriptionUpdate = req.TestOnSubscriptionUpdate
+			if req.LogLevel != "" {
+				cfg.LogLevel = req.LogLevel
 			}
 
 			// 同步更新 StreamTester 的深度检查选项
@@ -499,6 +615,40 @@ func SetupRouter(
 				"untested_channels": len(untestedChannels),
 				"subscriptions":     len(subs),
 			})
+		})
+
+		// 重启 API
+		api.POST("/restart", func(c *gin.Context) {
+			logger := utils.NewLogger()
+			logger.Info("Restart requested via API...")
+
+			c.JSON(http.StatusOK, gin.H{"message": "restarting server..."})
+
+			// 给前端一点时间接收响应
+			go func() {
+				time.Sleep(1 * time.Second)
+				logger.Info("Server is restarting!")
+
+				// 获取当前程序的路径和参数
+				args := os.Args
+				cwd, _ := os.Getwd()
+
+				// 启动新进程
+				attr := os.ProcAttr{
+					Dir:   cwd,
+					Env:   os.Environ(),
+					Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
+				}
+
+				process, err := os.StartProcess(args[0], args, &attr)
+				if err != nil {
+					logger.Error("Failed to restart: %v", err)
+					return
+				}
+
+				logger.Info("New process started with PID: %d", process.Pid)
+				os.Exit(0)
+			}()
 		})
 	}
 

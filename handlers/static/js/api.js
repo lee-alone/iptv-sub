@@ -155,4 +155,11 @@ const api = {
     async updateConfig(settings) {
         return await this.request('PUT', '/config', settings);
     },
+
+    /**
+     * 重启服务器
+     */
+    async restart() {
+        return await this.request('POST', '/restart');
+    },
 };
