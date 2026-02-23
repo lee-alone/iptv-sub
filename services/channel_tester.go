@@ -4,8 +4,8 @@ import (
 	"iptv-aggregator/models"
 )
 
-// TestResult 频道测试结果
-type TestResult struct {
+// ChannelTestResult 频道测试结果
+type ChannelTestResult struct {
 	Channel      *models.Channel
 	WorkingURL   string
 	ResponseTime int64
@@ -26,8 +26,8 @@ func NewChannelTester(streamTester *StreamTester) *ChannelTester {
 }
 
 // TestChannel 测试单个频道，返回测试结果
-func (ct *ChannelTester) TestChannel(channel *models.Channel, testAllSources bool) *TestResult {
-	result := &TestResult{
+func (ct *ChannelTester) TestChannel(channel *models.Channel, testAllSources bool) *ChannelTestResult {
+	result := &ChannelTestResult{
 		Channel: channel,
 	}
 
