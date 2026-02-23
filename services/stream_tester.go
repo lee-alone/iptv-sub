@@ -2,15 +2,13 @@ package services
 
 import (
 	"context"
-	"fmt"
-	"net"
 	"net/http"
-	"net/url"
 	"strings"
 	"sync"
 	"time"
 
 	"iptv-aggregator/models"
+	"iptv-aggregator/services/stream_tester"
 	"iptv-aggregator/utils"
 )
 
@@ -49,39 +47,10 @@ func NewStreamTester(timeout time.Duration, maxWorkers int) *StreamTester {
 		adaptiveLimiter: NewAdaptiveLimiter(maxWorkers),
 		hostCooldown:    NewHostCooldown(100 * time.Millisecond), // 100ms 冷却时间
 	}
-	st.client = st.createHTTPClient(timeout, maxWorkers)
+	st.client = stream_tester.CreateHTTPClient(timeout, maxWorkers)
 	st.hlsChecker = NewHLSChecker(st.client, st.deepCheck, st.loopChecks, st.loopInterval, st.segmentWindow, st.logger)
 	st.logger.Info("StreamTester initialized: maxWorkers=%d, maxPerHost=%d", maxWorkers, maxPerHost)
 	return st
-}
-
-// createHTTPClient 创建 HTTP 客户端，根据 maxWorkers 自适应连接池大小
-func (st *StreamTester) createHTTPClient(timeout time.Duration, maxWorkers int) *http.Client {
-	// MaxIdleConnsPerHost 应该至少等于 maxWorkers，以支持并发测试
-	// 如果 maxWorkers 很大，也要考虑系统资源，设置一个合理的上限
-	maxConnsPerHost := maxWorkers
-	if maxConnsPerHost < 10 {
-		maxConnsPerHost = 10 // 最小值
-	}
-	if maxConnsPerHost > 100 {
-		maxConnsPerHost = 100 // 最大值
-	}
-
-	return &http.Client{
-		Timeout: timeout,
-		Transport: &http.Transport{
-			ResponseHeaderTimeout: timeout,
-			IdleConnTimeout:       30 * time.Second,    // 空闲连接超时，防止僵尸连接
-			TLSHandshakeTimeout:   10 * time.Second,    // TLS 握手超时
-			MaxIdleConns:          maxConnsPerHost * 2, // 总连接数是单主机的 2 倍
-			MaxIdleConnsPerHost:   maxConnsPerHost,
-			DisableKeepAlives:     false,
-			DialContext: (&net.Dialer{
-				Timeout:   timeout,
-				KeepAlive: 30 * time.Second,
-			}).DialContext,
-		},
-	}
 }
 
 // SetDeepCheckOptions 设置深度检查选项
@@ -97,14 +66,14 @@ func (st *StreamTester) SetDeepCheckOptions(enabled bool, checks int, interval t
 // SetStreamTestTimeout 设置流测试超时时间
 func (st *StreamTester) SetStreamTestTimeout(timeout time.Duration) {
 	st.timeout = timeout
-	st.client = st.createHTTPClient(timeout, st.maxWorkers)
+	st.client = stream_tester.CreateHTTPClient(timeout, st.maxWorkers)
 }
 
 // SetMaxWorkers 设置最大并发工作数
 func (st *StreamTester) SetMaxWorkers(maxWorkers int) {
 	st.maxWorkers = maxWorkers
 	// 重新创建 HTTP 客户端，以适应新的并发数
-	st.client = st.createHTTPClient(st.timeout, maxWorkers)
+	st.client = stream_tester.CreateHTTPClient(st.timeout, maxWorkers)
 	// 更新自适应限流器
 	st.adaptiveLimiter = NewAdaptiveLimiter(maxWorkers)
 	// 更新域名限流器
@@ -127,13 +96,13 @@ func (st *StreamTester) TestStream(rawURL string) (bool, int64, error) {
 
 	// 1. RTMP 协议检测
 	if strings.HasPrefix(strings.ToLower(rawURL), "rtmp") {
-		return st.testRTMP(rawURL)
+		return stream_tester.TestRTMP(rawURL, st.timeout)
 	}
 
 	// 2. 特殊域名处理 (douyu, huya, bilibili)
 	lowerURL := strings.ToLower(rawURL)
 	if strings.Contains(lowerURL, "douyu") || strings.Contains(lowerURL, "huya") || strings.Contains(lowerURL, "bilibili") {
-		return st.testSpecialDomain(ctx, rawURL, userAgent, start)
+		return stream_tester.TestSpecialDomain(ctx, st.client, rawURL, userAgent, start)
 	}
 
 	// 3. M3U8 专门处理
@@ -142,79 +111,7 @@ func (st *StreamTester) TestStream(rawURL string) (bool, int64, error) {
 	}
 
 	// 4. 其他普通 URL 使用 HEAD
-	return st.testGenericURL(ctx, rawURL, userAgent, start)
-}
-
-// testRTMP 测试 RTMP 协议
-func (st *StreamTester) testRTMP(rawURL string) (bool, int64, error) {
-	start := time.Now()
-
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		return false, 0, fmt.Errorf("invalid rtmp url: %w", err)
-	}
-	host := u.Hostname()
-	port := u.Port()
-	if port == "" {
-		port = "1935"
-	}
-
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), st.timeout)
-	if err != nil {
-		return false, 0, fmt.Errorf("RTMP端口不可达: %w", err)
-	}
-	defer conn.Close()
-	return true, time.Since(start).Milliseconds(), nil
-}
-
-// testSpecialDomain 测试特殊域名
-func (st *StreamTester) testSpecialDomain(ctx context.Context, rawURL, userAgent string, start time.Time) (bool, int64, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", rawURL, nil)
-	if err != nil {
-		return false, 0, err
-	}
-	req.Header.Set("User-Agent", userAgent)
-
-	resp, err := st.client.Do(req)
-	if err != nil {
-		return false, 0, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == 200 {
-		// 尝试读取一小块数据确认是否有内容
-		buf := make([]byte, 1024)
-		_, _ = resp.Body.Read(buf)
-		return true, time.Since(start).Milliseconds(), nil
-	}
-	return false, 0, fmt.Errorf("HTTP错误: %d", resp.StatusCode)
-}
-
-// testGenericURL 测试普通 URL
-func (st *StreamTester) testGenericURL(ctx context.Context, rawURL, userAgent string, start time.Time) (bool, int64, error) {
-	req, err := http.NewRequestWithContext(ctx, "HEAD", rawURL, nil)
-	if err != nil {
-		return false, 0, err
-	}
-	req.Header.Set("User-Agent", userAgent)
-
-	resp, err := st.client.Do(req)
-	if err != nil {
-		// HEAD 失败尝试 GET (有些服务器不响应 HEAD)
-		req, _ = http.NewRequestWithContext(ctx, "GET", rawURL, nil)
-		req.Header.Set("User-Agent", userAgent)
-		resp, err = st.client.Do(req)
-		if err != nil {
-			return false, 0, err
-		}
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
-		return true, time.Since(start).Milliseconds(), nil
-	}
-
-	return false, 0, fmt.Errorf("HTTP错误: %d", resp.StatusCode)
+	return stream_tester.TestGenericURL(ctx, st.client, rawURL, userAgent, start)
 }
 
 // TestSingleChannel 测试单个频道
@@ -303,43 +200,10 @@ func (st *StreamTester) BatchTest(channels []*models.Channel, testAllSources boo
 
 	// 同步测试结果到被跳过的频道（共享相同URL的频道）
 	if len(skippedChannels) > 0 {
-		st.syncTestResultsToSkippedChannels(channels, skippedChannels)
+		stream_tester.SyncTestResultsToSkippedChannels(channels, skippedChannels, st.logger)
 	}
 
 	return channels, nil
-}
-
-// syncTestResultsToSkippedChannels 将测试结果同步到被跳过的频道
-func (st *StreamTester) syncTestResultsToSkippedChannels(testedChannels, skippedChannels []*models.Channel) {
-	// 创建 URL -> 测试结果的映射
-	urlToResult := make(map[string]*models.TestResult)
-	for _, ch := range testedChannels {
-		if len(ch.URLs) > 0 && ch.TestResults != nil {
-			urlToResult[ch.URLs[0]] = ch.TestResults
-		}
-	}
-
-	// 同步结果到被跳过的频道
-	syncedCount := 0
-	for _, ch := range skippedChannels {
-		if len(ch.URLs) > 0 {
-			if result, exists := urlToResult[ch.URLs[0]]; exists {
-				// 深拷贝测试结果，避免指针共享
-				ch.TestResults = &models.TestResult{
-					Status:       result.Status,
-					WorkingURL:   result.WorkingURL,
-					ResponseTime: result.ResponseTime,
-					TestedAt:     result.TestedAt,
-					Details:      result.Details,
-				}
-				syncedCount++
-			}
-		}
-	}
-
-	if syncedCount > 0 {
-		st.logger.Info("Synced test results to %d skipped channels", syncedCount)
-	}
 }
 
 // logRateLimiterStats 输出限流统计信息
