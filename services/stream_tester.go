@@ -231,8 +231,9 @@ func (st *StreamTester) BatchTest(channels []*models.Channel, testAllSources boo
 
 	// 可选：去重测试 - 避免重复测试相同的 URL
 	channelTester := NewChannelTester(st)
+	var skippedChannels []*models.Channel
 	if !testAllSources {
-		channels = channelTester.DeduplicateChannels(channels)
+		channels, skippedChannels = channelTester.DeduplicateChannels(channels)
 	}
 
 	st.logger.Info("Starting batch test for %d channels", len(channels))
@@ -300,7 +301,45 @@ func (st *StreamTester) BatchTest(channels []*models.Channel, testAllSources boo
 	// 输出限流统计信息
 	st.logRateLimiterStats()
 
+	// 同步测试结果到被跳过的频道（共享相同URL的频道）
+	if len(skippedChannels) > 0 {
+		st.syncTestResultsToSkippedChannels(channels, skippedChannels)
+	}
+
 	return channels, nil
+}
+
+// syncTestResultsToSkippedChannels 将测试结果同步到被跳过的频道
+func (st *StreamTester) syncTestResultsToSkippedChannels(testedChannels, skippedChannels []*models.Channel) {
+	// 创建 URL -> 测试结果的映射
+	urlToResult := make(map[string]*models.TestResult)
+	for _, ch := range testedChannels {
+		if len(ch.URLs) > 0 && ch.TestResults != nil {
+			urlToResult[ch.URLs[0]] = ch.TestResults
+		}
+	}
+
+	// 同步结果到被跳过的频道
+	syncedCount := 0
+	for _, ch := range skippedChannels {
+		if len(ch.URLs) > 0 {
+			if result, exists := urlToResult[ch.URLs[0]]; exists {
+				// 深拷贝测试结果，避免指针共享
+				ch.TestResults = &models.TestResult{
+					Status:       result.Status,
+					WorkingURL:   result.WorkingURL,
+					ResponseTime: result.ResponseTime,
+					TestedAt:     result.TestedAt,
+					Details:      result.Details,
+				}
+				syncedCount++
+			}
+		}
+	}
+
+	if syncedCount > 0 {
+		st.logger.Info("Synced test results to %d skipped channels", syncedCount)
+	}
 }
 
 // logRateLimiterStats 输出限流统计信息

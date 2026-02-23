@@ -339,6 +339,9 @@ func SetupRouter(
 				return
 			}
 
+			// 保存测试结果到磁盘
+			aggregator.Save()
+
 			// 更新所有订阅源的频道计数
 			subs := subscriptionMgr.GetAllSubscriptions()
 			for _, sub := range subs {

@@ -99,20 +99,25 @@ func (ct *ChannelTester) TestChannel(channel *models.Channel, testAllSources boo
 }
 
 // DeduplicateChannels 去重频道 - 避免重复测试相同的 URL
-func (ct *ChannelTester) DeduplicateChannels(channels []*models.Channel) []*models.Channel {
+// 返回去重后的频道列表和被跳过的频道（用于同步测试结果）
+func (ct *ChannelTester) DeduplicateChannels(channels []*models.Channel) ([]*models.Channel, []*models.Channel) {
 	deduped := make(map[string]bool)
 	uniqueChannels := make([]*models.Channel, 0, len(channels))
+	skippedChannels := make([]*models.Channel, 0)
 
 	for _, ch := range channels {
 		if len(ch.URLs) > 0 && !deduped[ch.URLs[0]] {
 			deduped[ch.URLs[0]] = true
 			uniqueChannels = append(uniqueChannels, ch)
+		} else if len(ch.URLs) > 0 {
+			// 记录被跳过的频道（共享相同URL的频道）
+			skippedChannels = append(skippedChannels, ch)
 		}
 	}
 
-	if len(uniqueChannels) < len(channels) {
-		ct.streamTester.logger.Info("Deduplicated channels: %d -> %d", len(channels), len(uniqueChannels))
+	if len(skippedChannels) > 0 {
+		ct.streamTester.logger.Info("Deduplicated channels: %d -> %d (skipped: %d)", len(channels), len(uniqueChannels), len(skippedChannels))
 	}
 
-	return uniqueChannels
+	return uniqueChannels, skippedChannels
 }
