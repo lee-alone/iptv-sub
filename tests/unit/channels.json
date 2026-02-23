@@ -1,116 +1,118 @@
 [
-  {
-    "id": "cctv3",
-    "name": "CCTV 3",
-    "group_title": "央视",
-    "tvg_id": "cctv3",
-    "tvg_name": "CCTV 3",
-    "tvg_logo": "http://logo.png",
-    "urls": [
-      "http://stream3.m3u8",
-      "http://stream2.m3u8",
-      "http://stream1.m3u8"
-    ],
-    "source_urls": {
-      "http://stream1.m3u8": "http://source1.m3u",
-      "http://stream2.m3u8": "http://source2.m3u",
-      "http://stream3.m3u8": "http://source3.m3u"
-    },
-    "test_results": {
-      "status": "untested",
-      "tested_at": "2026-02-21T17:34:24.5994362-08:00"
-    },
-    "created_at": "2026-02-21T17:34:24.5994362-08:00",
-    "updated_at": "2026-02-21T17:34:24.6495501-08:00"
+ {
+  "id": "id1",
+  "name": "This is a very long channel name with many words and characters",
+  "group_title": "央视",
+  "tvg_id": "id1",
+  "tvg_name": "CCTV 1",
+  "tvg_logo": "http://logo.png",
+  "urls": [
+   "http://stream1.m3u8",
+   "http://stream2.m3u8"
+  ],
+  "source_urls": {
+   "http://stream1.m3u8": "http://source1.m3u",
+   "http://stream2.m3u8": "http://source2.m3u"
   },
-  {
-    "id": "id2",
-    "name": "cctv 1",
-    "group_title": "央视",
-    "tvg_id": "id2",
-    "tvg_name": "CCTV 1",
-    "tvg_logo": "http://logo.png",
-    "urls": [
-      "http://stream2.m3u8",
-      "http://stream1.m3u8"
-    ],
-    "source_urls": {
-      "http://stream1.m3u8": "http://source1.m3u",
-      "http://stream2.m3u8": "http://source2.m3u"
-    },
-    "test_results": {
-      "status": "untested",
-      "tested_at": "2026-02-21T17:34:24.7010595-08:00"
-    },
-    "created_at": "2026-02-21T17:34:24.7010595-08:00",
-    "updated_at": "2026-02-21T17:34:24.7283444-08:00"
+  "test_results": {
+   "status": "untested",
+   "tested_at": "2026-02-22T19:33:07.0237594-08:00"
   },
-  {
-    "id": "cctv1",
-    "name": "CCTV 1",
-    "group_title": "央视",
-    "tvg_id": "cctv1",
-    "tvg_name": "CCTV 1",
-    "tvg_logo": "http://logo.png",
-    "urls": [
-      "http://stream1.m3u8",
-      "http://stream2.m3u8",
-      "http://stream3.m3u8",
-      "http://stream1b.m3u8"
-    ],
-    "source_urls": {
-      "http://stream1.m3u8": "http://source1.m3u",
-      "http://stream1b.m3u8": "http://source1b.m3u",
-      "http://stream2.m3u8": "http://source2.m3u",
-      "http://stream3.m3u8": "http://source3.m3u"
-    },
-    "test_results": {
-      "status": "untested",
-      "tested_at": "2026-02-21T17:34:24.5653499-08:00"
-    },
-    "created_at": "2026-02-21T17:34:24.5653499-08:00",
-    "updated_at": "2026-02-21T17:34:24.6104445-08:00"
+  "created_at": "2026-02-22T19:33:07.0237594-08:00",
+  "updated_at": "2026-02-22T19:33:07.0237594-08:00"
+ },
+ {
+  "id": "cctv3",
+  "name": "CCTV 3",
+  "group_title": "央视",
+  "tvg_id": "cctv3",
+  "tvg_name": "CCTV 3",
+  "tvg_logo": "http://logo.png",
+  "urls": [
+   "http://stream3.m3u8",
+   "http://stream2.m3u8",
+   "http://stream1.m3u8"
+  ],
+  "source_urls": {
+   "http://stream1.m3u8": "http://source1.m3u",
+   "http://stream2.m3u8": "http://source2.m3u",
+   "http://stream3.m3u8": "http://source3.m3u"
   },
-  {
-    "id": "cctv2",
-    "name": "CCTV 2",
-    "group_title": "央视",
-    "tvg_id": "cctv2",
-    "tvg_name": "CCTV 2",
-    "tvg_logo": "http://logo.png",
-    "urls": [
-      "http://stream2.m3u8"
-    ],
-    "source_urls": {
-      "http://stream2.m3u8": "http://source2.m3u"
-    },
-    "test_results": {
-      "status": "untested",
-      "tested_at": "2026-02-21T17:34:24.5994362-08:00"
-    },
-    "created_at": "2026-02-21T17:34:24.5994362-08:00",
-    "updated_at": "2026-02-21T17:34:24.5994362-08:00"
+  "test_results": {
+   "status": "untested",
+   "tested_at": "2026-02-21T17:34:24.5994362-08:00"
   },
-  {
-    "id": "id1",
-    "name": "This is a very long channel name with many words and characters",
-    "group_title": "央视",
-    "tvg_id": "id1",
-    "tvg_name": "CCTV 1",
-    "tvg_logo": "http://logo.png",
-    "urls": [
-      "http://stream1.m3u8",
-      "http://stream2.m3u8"
-    ],
-    "source_urls": {
-      "http://stream1.m3u8": "http://source1.m3u",
-      "http://stream2.m3u8": "http://source2.m3u"
-    },
-    "test_results": {
-      "status": "untested",
-      "tested_at": "2026-02-21T17:34:24.7134692-08:00"
-    },
-    "created_at": "2026-02-21T17:34:24.7134692-08:00",
-    "updated_at": "2026-02-21T17:34:24.7134692-08:00"
-  }
+  "created_at": "2026-02-21T17:34:24.5994362-08:00",
+  "updated_at": "2026-02-22T19:33:06.9245483-08:00"
+ },
+ {
+  "id": "id2",
+  "name": "CCTV1",
+  "group_title": "央视",
+  "tvg_id": "id2",
+  "tvg_name": "CCTV 1",
+  "tvg_logo": "http://logo.png",
+  "urls": [
+   "http://stream2.m3u8"
+  ],
+  "source_urls": {
+   "http://stream2.m3u8": "http://source2.m3u"
+  },
+  "test_results": {
+   "status": "untested",
+   "tested_at": "2026-02-22T19:33:06.9397126-08:00"
+  },
+  "created_at": "2026-02-22T19:33:06.9397126-08:00",
+  "updated_at": "2026-02-22T19:33:07.0900869-08:00"
+ },
+ {
+  "id": "cctv1",
+  "name": "CCTV 1",
+  "group_title": "央视",
+  "tvg_id": "cctv1",
+  "tvg_name": "CCTV 1",
+  "tvg_logo": "http://logo.png",
+  "urls": [
+   "http://stream1.m3u8",
+   "http://stream2.m3u8",
+   "http://stream3.m3u8",
+   "http://stream1b.m3u8"
+  ],
+  "source_urls": {
+   "http://stream1.m3u8": "http://source1.m3u",
+   "http://stream1b.m3u8": "http://source1b.m3u",
+   "http://stream2.m3u8": "http://source2.m3u",
+   "http://stream3.m3u8": "http://source3.m3u"
+  },
+  "test_results": {
+   "status": "untested",
+   "tested_at": "2026-02-21T17:34:24.5653499-08:00"
+  },
+  "created_at": "2026-02-21T17:34:24.5653499-08:00",
+  "updated_at": "2026-02-22T19:33:07.0900869-08:00"
+ },
+ {
+  "id": "cctv2",
+  "name": "CCTV 2",
+  "group_title": "央视",
+  "tvg_id": "cctv2",
+  "tvg_name": "CCTV 2",
+  "tvg_logo": "http://logo.png",
+  "urls": [
+   "http://stream2.m3u8",
+   "http://stream3.m3u8",
+   "http://stream4.m3u8"
+  ],
+  "source_urls": {
+   "http://stream2.m3u8": "http://source2.m3u",
+   "http://stream3.m3u8": "http://source3.m3u",
+   "http://stream4.m3u8": "http://source4.m3u"
+  },
+  "test_results": {
+   "status": "untested",
+   "tested_at": "2026-02-21T17:34:24.5994362-08:00"
+  },
+  "created_at": "2026-02-21T17:34:24.5994362-08:00",
+  "updated_at": "2026-02-22T19:33:07.0900869-08:00"
+ }
 ]

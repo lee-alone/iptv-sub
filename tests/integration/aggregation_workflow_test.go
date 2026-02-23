@@ -7,6 +7,7 @@ import (
 
 	"iptv-aggregator/models"
 	"iptv-aggregator/services"
+	agg "iptv-aggregator/services/aggregator"
 	"iptv-aggregator/tests"
 )
 
@@ -34,7 +35,7 @@ http://example.com/stream3.m3u8
 	// Initialize services
 	subscriptionMgr := services.NewSubscriptionManager(tmpDir)
 	parser := services.NewM3UParser(10 * time.Second)
-	aggregator := services.NewChannelAggregator(tmpDir)
+	aggregator := agg.NewChannelAggregator(tmpDir)
 	tester := services.NewStreamTester(5*time.Second, 2)
 	exporter := services.NewChannelExporter(tmpDir)
 
@@ -113,7 +114,7 @@ http://example.com/stream2.m3u8
 	tests.CreateTestFile(t, tmpDir, "test.m3u", m3uContent)
 
 	parser := services.NewM3UParser(10 * time.Second)
-	aggregator := services.NewChannelAggregator(tmpDir)
+	aggregator := agg.NewChannelAggregator(tmpDir)
 
 	// Parse channels
 	channels, err := parser.ParseM3U(m3uContent, "file://"+m3uFile)
@@ -163,7 +164,7 @@ http://example.com/stream3.m3u8
 	tests.CreateTestFile(t, tmpDir, "test2.m3u", m3u2Content)
 
 	parser := services.NewM3UParser(10 * time.Second)
-	aggregator := services.NewChannelAggregator(tmpDir)
+	aggregator := agg.NewChannelAggregator(tmpDir)
 
 	// Parse and aggregate from first subscription
 	channels1, err := parser.ParseM3U(m3u1Content, "file://"+m3u1File)

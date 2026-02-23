@@ -4,13 +4,13 @@ import (
 	"testing"
 
 	"iptv-aggregator/models"
-	"iptv-aggregator/services"
+	agg "iptv-aggregator/services/aggregator"
 	"iptv-aggregator/tests"
 )
 
 // TestChannelDeduplication_ExactMatch tests exact channel deduplication
 func TestChannelDeduplication_ExactMatch(t *testing.T) {
-	aggregator := services.NewChannelAggregator("")
+	aggregator := agg.NewChannelAggregator("")
 
 	// Create two identical channels
 	ch1 := models.NewChannel("CCTV 1", "央视", "cctv1", "CCTV 1", "http://logo.png", "http://stream1.m3u8", "http://source1.m3u")
@@ -31,7 +31,7 @@ func TestChannelDeduplication_ExactMatch(t *testing.T) {
 
 // TestChannelDeduplication_ByTvgID tests deduplication by tvg_id matching mode
 func TestChannelDeduplication_ByTvgID(t *testing.T) {
-	aggregator := services.NewChannelAggregator("")
+	aggregator := agg.NewChannelAggregator("")
 
 	// Create channels with same tvg_id but different names
 	ch1 := models.NewChannel("CCTV 1", "央视", "cctv1", "CCTV 1", "http://logo.png", "http://stream1.m3u8", "http://source1.m3u")
@@ -51,7 +51,7 @@ func TestChannelDeduplication_ByTvgID(t *testing.T) {
 
 // TestChannelDeduplication_ByName tests deduplication by name matching mode
 func TestChannelDeduplication_ByName(t *testing.T) {
-	aggregator := services.NewChannelAggregator("")
+	aggregator := agg.NewChannelAggregator("")
 
 	// Create channels with similar names but different tvg_id
 	ch1 := models.NewChannel("CCTV 1", "央视", "id1", "CCTV 1", "http://logo.png", "http://stream1.m3u8", "http://source1.m3u")
@@ -71,7 +71,7 @@ func TestChannelDeduplication_ByName(t *testing.T) {
 
 // TestChannelDeduplication_ByBoth tests deduplication by both tvg_id and name
 func TestChannelDeduplication_ByBoth(t *testing.T) {
-	aggregator := services.NewChannelAggregator("")
+	aggregator := agg.NewChannelAggregator("")
 
 	// Create channels with same tvg_id
 	ch1 := models.NewChannel("CCTV 1", "央视", "cctv1", "CCTV 1", "http://logo.png", "http://stream1.m3u8", "http://source1.m3u")
@@ -94,7 +94,7 @@ func TestChannelDeduplication_ByBoth(t *testing.T) {
 
 // TestChannelDeduplication_NoMatch tests channels that don't match
 func TestChannelDeduplication_NoMatch(t *testing.T) {
-	aggregator := services.NewChannelAggregator("")
+	aggregator := agg.NewChannelAggregator("")
 
 	// Create completely different channels
 	ch1 := models.NewChannel("CCTV 1", "央视", "cctv1", "CCTV 1", "http://logo.png", "http://stream1.m3u8", "http://source1.m3u")
@@ -114,7 +114,7 @@ func TestChannelDeduplication_NoMatch(t *testing.T) {
 
 // TestChannelDeduplication_EmptyChannels tests aggregation with empty channel list
 func TestChannelDeduplication_EmptyChannels(t *testing.T) {
-	aggregator := services.NewChannelAggregator("")
+	aggregator := agg.NewChannelAggregator("")
 
 	channels := []*models.Channel{}
 
@@ -129,7 +129,7 @@ func TestChannelDeduplication_EmptyChannels(t *testing.T) {
 
 // TestChannelDeduplication_MultipleRounds tests deduplication across multiple aggregation rounds
 func TestChannelDeduplication_MultipleRounds(t *testing.T) {
-	aggregator := services.NewChannelAggregator("")
+	aggregator := agg.NewChannelAggregator("")
 
 	// First round: add 2 channels
 	ch1 := models.NewChannel("CCTV 1", "央视", "cctv1", "CCTV 1", "http://logo.png", "http://stream1.m3u8", "http://source1.m3u")
@@ -165,7 +165,7 @@ func TestChannelDeduplication_MultipleRounds(t *testing.T) {
 
 // TestSimilarity_IdenticalStrings tests similarity of identical strings
 func TestSimilarity_IdenticalStrings(t *testing.T) {
-	aggregator := services.NewChannelAggregator("")
+	aggregator := agg.NewChannelAggregator("")
 
 	ch1 := models.NewChannel("CCTV 1", "央视", "id1", "CCTV 1", "http://logo.png", "http://stream1.m3u8", "http://source1.m3u")
 	ch2 := models.NewChannel("CCTV 1", "央视", "id2", "CCTV 1", "http://logo.png", "http://stream2.m3u8", "http://source2.m3u")
@@ -179,7 +179,7 @@ func TestSimilarity_IdenticalStrings(t *testing.T) {
 
 // TestSimilarity_HighSimilarity tests similarity with high similarity threshold
 func TestSimilarity_HighSimilarity(t *testing.T) {
-	aggregator := services.NewChannelAggregator("")
+	aggregator := agg.NewChannelAggregator("")
 
 	// "CCTV 1" vs "CCTV1" - very similar
 	ch1 := models.NewChannel("CCTV 1", "央视", "id1", "CCTV 1", "http://logo.png", "http://stream1.m3u8", "http://source1.m3u")
@@ -194,7 +194,7 @@ func TestSimilarity_HighSimilarity(t *testing.T) {
 
 // TestSimilarity_LowSimilarity tests similarity with low similarity threshold
 func TestSimilarity_LowSimilarity(t *testing.T) {
-	aggregator := services.NewChannelAggregator("")
+	aggregator := agg.NewChannelAggregator("")
 
 	// "CCTV 1" vs "CCTV 3" - more different
 	ch1 := models.NewChannel("CCTV 1", "央视", "id1", "CCTV 1", "http://logo.png", "http://stream1.m3u8", "http://source1.m3u")
@@ -209,7 +209,7 @@ func TestSimilarity_LowSimilarity(t *testing.T) {
 
 // TestSimilarity_ThresholdBoundary tests similarity at threshold boundary
 func TestSimilarity_ThresholdBoundary(t *testing.T) {
-	aggregator := services.NewChannelAggregator("")
+	aggregator := agg.NewChannelAggregator("")
 
 	// Create channels with names that are exactly at the threshold
 	ch1 := models.NewChannel("CCTV 1", "央视", "id1", "CCTV 1", "http://logo.png", "http://stream1.m3u8", "http://source1.m3u")
@@ -221,7 +221,7 @@ func TestSimilarity_ThresholdBoundary(t *testing.T) {
 	tests.AssertNoError(t, err1, "AggregateChannels should not return error")
 
 	// With threshold 0.5, should definitely match
-	aggregator2 := services.NewChannelAggregator("")
+	aggregator2 := agg.NewChannelAggregator("")
 	ch3 := models.NewChannel("CCTV 1", "央视", "id1", "CCTV 1", "http://logo.png", "http://stream1.m3u8", "http://source1.m3u")
 	ch4 := models.NewChannel("CCTV1", "央视", "id2", "CCTV 1", "http://logo.png", "http://stream2.m3u8", "http://source2.m3u")
 	added2, updated2, _, err2 := aggregator2.AggregateChannels([]*models.Channel{ch3, ch4}, "name", 0.5)
@@ -232,7 +232,7 @@ func TestSimilarity_ThresholdBoundary(t *testing.T) {
 
 // TestSimilarity_EmptyStrings tests similarity with empty strings
 func TestSimilarity_EmptyStrings(t *testing.T) {
-	aggregator := services.NewChannelAggregator("")
+	aggregator := agg.NewChannelAggregator("")
 
 	// Channel with empty name
 	ch1 := models.NewChannel("", "央视", "id1", "CCTV 1", "http://logo.png", "http://stream1.m3u8", "http://source1.m3u")
@@ -246,7 +246,7 @@ func TestSimilarity_EmptyStrings(t *testing.T) {
 
 // TestSimilarity_SpecialCharacters tests similarity with special characters
 func TestSimilarity_SpecialCharacters(t *testing.T) {
-	aggregator := services.NewChannelAggregator("")
+	aggregator := agg.NewChannelAggregator("")
 
 	// Channels with special characters
 	ch1 := models.NewChannel("CCTV & 1", "央视", "id1", "CCTV 1", "http://logo.png", "http://stream1.m3u8", "http://source1.m3u")
@@ -260,7 +260,7 @@ func TestSimilarity_SpecialCharacters(t *testing.T) {
 
 // TestSimilarity_ChineseCharacters tests similarity with Chinese characters
 func TestSimilarity_ChineseCharacters(t *testing.T) {
-	aggregator := services.NewChannelAggregator("")
+	aggregator := agg.NewChannelAggregator("")
 
 	// Channels with Chinese characters
 	ch1 := models.NewChannel("中央电视台 1", "央视", "id1", "CCTV 1", "http://logo.png", "http://stream1.m3u8", "http://source1.m3u")
@@ -274,7 +274,7 @@ func TestSimilarity_ChineseCharacters(t *testing.T) {
 
 // TestSimilarity_CaseSensitivity tests similarity with different cases
 func TestSimilarity_CaseSensitivity(t *testing.T) {
-	aggregator := services.NewChannelAggregator("")
+	aggregator := agg.NewChannelAggregator("")
 
 	// Channels with different cases
 	ch1 := models.NewChannel("CCTV 1", "央视", "id1", "CCTV 1", "http://logo.png", "http://stream1.m3u8", "http://source1.m3u")
@@ -290,7 +290,7 @@ func TestSimilarity_CaseSensitivity(t *testing.T) {
 
 // TestSimilarity_LongStrings tests similarity with long strings
 func TestSimilarity_LongStrings(t *testing.T) {
-	aggregator := services.NewChannelAggregator("")
+	aggregator := agg.NewChannelAggregator("")
 
 	longName1 := "This is a very long channel name with many words and characters"
 	longName2 := "This is a very long channel name with many words and characters"
@@ -306,7 +306,7 @@ func TestSimilarity_LongStrings(t *testing.T) {
 
 // TestSimilarity_OneCharacterDifference tests similarity with one character difference
 func TestSimilarity_OneCharacterDifference(t *testing.T) {
-	aggregator := services.NewChannelAggregator("")
+	aggregator := agg.NewChannelAggregator("")
 
 	// "CCTV 1" vs "CCTV 2" - one character difference
 	ch1 := models.NewChannel("CCTV 1", "央视", "id1", "CCTV 1", "http://logo.png", "http://stream1.m3u8", "http://source1.m3u")
@@ -321,7 +321,7 @@ func TestSimilarity_OneCharacterDifference(t *testing.T) {
 
 // TestSimilarity_ZeroThreshold tests similarity with zero threshold
 func TestSimilarity_ZeroThreshold(t *testing.T) {
-	aggregator := services.NewChannelAggregator("")
+	aggregator := agg.NewChannelAggregator("")
 
 	// Any two channels should match with threshold 0
 	ch1 := models.NewChannel("CCTV 1", "央视", "id1", "CCTV 1", "http://logo.png", "http://stream1.m3u8", "http://source1.m3u")
@@ -335,7 +335,7 @@ func TestSimilarity_ZeroThreshold(t *testing.T) {
 
 // TestSimilarity_OneThreshold tests similarity with threshold of 1.0
 func TestSimilarity_OneThreshold(t *testing.T) {
-	aggregator := services.NewChannelAggregator("")
+	aggregator := agg.NewChannelAggregator("")
 
 	// Only identical channels should match with threshold 1.0
 	ch1 := models.NewChannel("CCTV 1", "央视", "id1", "CCTV 1", "http://logo.png", "http://stream1.m3u8", "http://source1.m3u")
@@ -349,7 +349,7 @@ func TestSimilarity_OneThreshold(t *testing.T) {
 
 // TestSimilarity_MultipleChannelsWithThreshold tests similarity with multiple channels and threshold
 func TestSimilarity_MultipleChannelsWithThreshold(t *testing.T) {
-	aggregator := services.NewChannelAggregator("")
+	aggregator := agg.NewChannelAggregator("")
 
 	// Create multiple channels with varying similarity
 	ch1 := models.NewChannel("CCTV 1", "央视", "id1", "CCTV 1", "http://logo.png", "http://stream1.m3u8", "http://source1.m3u")

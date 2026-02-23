@@ -12,6 +12,7 @@ import (
 	"iptv-aggregator/config"
 	"iptv-aggregator/handlers"
 	"iptv-aggregator/services"
+	"iptv-aggregator/services/aggregator"
 	"iptv-aggregator/utils"
 
 	"github.com/gin-gonic/gin"
@@ -96,7 +97,7 @@ func main() {
 	logger.Info("Initializing services...")
 	subscriptionMgr := services.NewSubscriptionManager(cfg.DataDir)
 	parser := services.NewM3UParser(cfg.RequestTimeout)
-	aggregator := services.NewChannelAggregator(cfg.DataDir)
+	agg := aggregator.NewChannelAggregator(cfg.DataDir)
 	tester := services.NewStreamTester(cfg.StreamTestTimeout, cfg.MaxTestWorkers)
 	tester.SetDeepCheckOptions(cfg.DeepCheck, cfg.LoopChecks, cfg.LoopInterval, cfg.SegmentWindow)
 	scheduler := services.NewScheduler()
@@ -106,9 +107,9 @@ func main() {
 
 	// 如果启用了流测试，在启动时根据配置决定是否进行测试
 	if cfg.EnableStreamTest {
-		channels := aggregator.GetAllChannels()
-		hasResults := aggregator.HasTestResults()
-		lastTestTime := aggregator.GetLastTestTime()
+		channels := agg.GetAllChannels()
+		hasResults := agg.HasTestResults()
+		lastTestTime := agg.GetLastTestTime()
 
 		// 判断是否需要启动时自动测试
 		shouldAutoTest := cfg.AutoTestOnStartup &&
@@ -117,13 +118,13 @@ func main() {
 
 		if shouldAutoTest {
 			logger.Info("Auto-testing channels on startup (no results or results expired)...")
-			aggregator.ResetTestResults()
+			agg.ResetTestResults()
 			tested, err := tester.BatchTest(channels, cfg.TestAllSources)
 			if err != nil {
 				logger.Error("Startup auto-test failed: %v", err)
 			} else {
 				logger.Info("Startup auto-test completed: %d channels tested", len(tested))
-				aggregator.Save()
+				agg.Save()
 			}
 		} else {
 			if hasResults {
@@ -153,7 +154,7 @@ func main() {
 	router := handlers.SetupRouter(
 		subscriptionMgr,
 		parser,
-		aggregator,
+		agg,
 		tester,
 		scheduler,
 		exporter,
@@ -183,11 +184,11 @@ func main() {
 				logger.Error("Failed to parse M3U for %s: %v", sub.Name, err)
 				continue
 			}
-			added, updated, _, _ := aggregator.AggregateChannels(channels, cfg.MatchBy, cfg.SimilarityThreshold)
+			added, updated, _, _ := agg.AggregateChannels(channels, cfg.MatchBy, cfg.SimilarityThreshold)
 			logger.Info("Subscription %s updated: %d added, %d updated", sub.Name, added, updated)
 
 			// 更新频道计数
-			count := aggregator.GetChannelCountBySource(sub.URL)
+			count := agg.GetChannelCountBySource(sub.URL)
 			subscriptionMgr.UpdateSubscriptionStatus(sub.URL, "active", count)
 		}
 		return nil
@@ -197,14 +198,14 @@ func main() {
 	if cfg.EnableStreamTest {
 		scheduler.AddJob("test_streams", cfg.TestInterval.String(), func() error {
 			logger.Info("Starting scheduled stream test...")
-			channels := aggregator.GetAllChannels()
+			channels := agg.GetAllChannels()
 			if len(channels) == 0 {
 				logger.Info("No channels to test")
 				return nil
 			}
 
 			// 定时测试前也进行复位
-			aggregator.ResetTestResults()
+			agg.ResetTestResults()
 
 			tested, err := tester.BatchTest(channels, cfg.TestAllSources)
 			if err != nil {
@@ -213,7 +214,7 @@ func main() {
 			}
 			logger.Info("Scheduled stream test completed: %d channels tested", len(tested))
 			// 保存测试结果
-			return aggregator.Save()
+			return agg.Save()
 		})
 	}
 

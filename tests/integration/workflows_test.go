@@ -7,6 +7,7 @@ import (
 
 	"iptv-aggregator/models"
 	"iptv-aggregator/services"
+	agg "iptv-aggregator/services/aggregator"
 	"iptv-aggregator/tests"
 )
 
@@ -29,7 +30,7 @@ http://example.com/stream2.m3u8
 	// Initialize services
 	subscriptionMgr := services.NewSubscriptionManager(tmpDir)
 	parser := services.NewM3UParser(10 * time.Second)
-	aggregator := services.NewChannelAggregator(tmpDir)
+	aggregator := agg.NewChannelAggregator(tmpDir)
 	exporter := services.NewChannelExporter(tmpDir)
 
 	// Step 1: Add subscription
@@ -104,7 +105,7 @@ func TestIntegrationChannelQuery(t *testing.T) {
 	tmpDir := tests.CreateTempDir(t)
 	defer tests.CleanupTempDir(t, tmpDir)
 
-	aggregator := services.NewChannelAggregator(tmpDir)
+	aggregator := agg.NewChannelAggregator(tmpDir)
 
 	// Create test channels
 	channels := []*models.Channel{

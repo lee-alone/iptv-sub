@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"iptv-aggregator/models"
-	"iptv-aggregator/services"
+	agg "iptv-aggregator/services/aggregator"
 	"iptv-aggregator/tests"
 )
 
@@ -14,7 +14,7 @@ func TestIntegrationChannelQueryWorkflow(t *testing.T) {
 	tmpDir := tests.CreateTempDir(t)
 	defer tests.CleanupTempDir(t, tmpDir)
 
-	aggregator := services.NewChannelAggregator(tmpDir)
+	aggregator := agg.NewChannelAggregator(tmpDir)
 
 	// Create test channels
 	channels := []*models.Channel{
@@ -93,7 +93,7 @@ func TestIntegrationChannelStatusFiltering(t *testing.T) {
 	tmpDir := tests.CreateTempDir(t)
 	defer tests.CleanupTempDir(t, tmpDir)
 
-	aggregator := services.NewChannelAggregator(tmpDir)
+	aggregator := agg.NewChannelAggregator(tmpDir)
 
 	// Create channels with different statuses
 	channels := []*models.Channel{
@@ -158,7 +158,7 @@ func TestIntegrationChannelPersistence(t *testing.T) {
 	defer tests.CleanupTempDir(t, tmpDir)
 
 	// Create first aggregator and add channels
-	agg1 := services.NewChannelAggregator(tmpDir)
+	agg1 := agg.NewChannelAggregator(tmpDir)
 
 	channels := []*models.Channel{
 		{
@@ -184,7 +184,7 @@ func TestIntegrationChannelPersistence(t *testing.T) {
 	tests.AssertEqual(t, 2, len(ch1), "Should have 2 channels")
 
 	// Create new aggregator instance (simulating app restart)
-	agg2 := services.NewChannelAggregator(tmpDir)
+	agg2 := agg.NewChannelAggregator(tmpDir)
 	ch2 := agg2.GetAllChannels()
 
 	// Verify channels were persisted
