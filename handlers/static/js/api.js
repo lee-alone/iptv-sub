@@ -115,6 +115,15 @@ const api = {
     },
 
     /**
+     * 仅测试未测试的频道
+     */
+    async testUntestedChannels(testAllSources = false) {
+        return await this.request('POST', '/test/untested', {
+            test_all_sources: testAllSources,
+        });
+    },
+
+    /**
      * 测试单个频道
      */
     async testChannel(id) {

@@ -110,6 +110,9 @@
                         <button class="btn btn-primary me-2" onclick="updateSubscriptions()">
                             <i class="bi bi-arrow-repeat"></i> 更新订阅源
                         </button>
+                        <button class="btn btn-warning me-2" onclick="testUntestedChannels()">
+                            <i class="bi bi-lightning"></i> 仅测试新频道
+                        </button>
                         <button class="btn btn-success me-2" onclick="testAllChannels()">
                             <i class="bi bi-lightning"></i> 测试所有频道
                         </button>
@@ -267,6 +270,28 @@
                     btn.innerHTML = oldContent;
                 });
             }
+        }
+
+        function testUntestedChannels() {
+            if (!confirm('确定要仅测试新频道吗？')) {
+                return;
+            }
+
+            const btn = event.currentTarget;
+            const oldContent = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> 测试中...';
+
+            api.testUntestedChannels().then(result => {
+                utils.showSuccess(`${result.count || '所有新'}频道测试完成`);
+                btn.disabled = false;
+                btn.innerHTML = oldContent;
+                loadStats();
+            }).catch(err => {
+                utils.showError('测试失败: ' + err.message);
+                btn.disabled = false;
+                btn.innerHTML = oldContent;
+            });
         }
 
         function testAllChannels() {

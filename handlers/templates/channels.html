@@ -78,9 +78,14 @@
                 <div class="card">
                     <div class="card-header bg-light d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">频道列表</h5>
-                        <button class="btn btn-sm btn-success" onclick="testAllChannels()">
-                            <i class="bi bi-lightning"></i> 测试所有
-                        </button>
+                        <div>
+                            <button class="btn btn-sm btn-warning" onclick="testUntestedChannels()">
+                                <i class="bi bi-lightning"></i> 仅测试新频道
+                            </button>
+                            <button class="btn btn-sm btn-success ms-2" onclick="testAllChannels()">
+                                <i class="bi bi-lightning"></i> 测试所有
+                            </button>
+                        </div>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
@@ -224,6 +229,39 @@
                 .finally(() => {
                     btn.disabled = false;
                     btn.innerHTML = '<i class="bi bi-lightning"></i> 测试';
+                });
+        }
+
+        function testUntestedChannels() {
+            const untestedCount = allChannels.filter(ch => 
+                !ch.test_results || ch.test_results?.status === 'untested'
+            ).length;
+
+            if (untestedCount === 0) {
+                utils.showInfo('暂无待测试的频道');
+                return;
+            }
+
+            if (!utils.confirm(`确定要测试 ${untestedCount} 个新频道吗？`)) {
+                return;
+            }
+
+            const btn = event.currentTarget;
+            const oldContent = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> 测试中...';
+
+            api.testUntestedChannels(false)
+                .then(result => {
+                    utils.showSuccess(`${result.count || untestedCount} 个新频道测试完成`);
+                    loadChannels();
+                })
+                .catch(err => {
+                    utils.showError('测试失败: ' + err.message);
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = oldContent;
                 });
         }
 
