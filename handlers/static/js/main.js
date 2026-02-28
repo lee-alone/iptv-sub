@@ -78,12 +78,43 @@ const utils = {
      * 复制到剪贴板
      */
     async copyToClipboard(text) {
+        // 1. 尝试使用现代 Clipboard API
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            try {
+                await navigator.clipboard.writeText(text);
+                this.showSuccess('已复制到剪贴板');
+                return;
+            } catch (err) {
+                console.warn('Clipboard API 失败，尝试备选方案:', err);
+            }
+        }
+
+        // 2. 备选方案: 使用不可见 textarea + execCommand
         try {
-            await navigator.clipboard.writeText(text);
-            this.showSuccess('已复制到剪贴板');
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+
+            // 确保不可见但能被选中
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            textArea.style.top = "0";
+            textArea.style.opacity = "0";
+            document.body.appendChild(textArea);
+
+            textArea.focus();
+            textArea.select();
+
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+
+            if (successful) {
+                this.showSuccess('已复制到剪贴板');
+            } else {
+                throw new Error('execCommand 返回 false');
+            }
         } catch (err) {
-            console.error('复制失败:', err);
-            this.showError('复制失败');
+            console.error('所有复制方式均失败:', err);
+            this.showError('复制失败，请手动选择复制');
         }
     },
 

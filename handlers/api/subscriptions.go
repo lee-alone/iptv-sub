@@ -46,8 +46,8 @@ func (h *SubscriptionHandlers) RegisterRoutes(rg *gin.RouterGroup) {
 	{
 		subs.GET("", h.list)
 		subs.POST("", h.add)
-		subs.DELETE("/:url", h.remove)
-		subs.PUT("/:url", h.update)
+		subs.DELETE("", h.remove)
+		subs.PUT("", h.update)
 	}
 	// 更新所有订阅源
 	rg.POST("/subscriptions/update", h.updateAll)
@@ -85,7 +85,11 @@ func (h *SubscriptionHandlers) add(c *gin.Context) {
 
 // remove 删除订阅源
 func (h *SubscriptionHandlers) remove(c *gin.Context) {
-	url := c.Param("url")
+	url := c.Query("url")
+	if url == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "url is required"})
+		return
+	}
 	if err := h.subscriptionMgr.RemoveSubscription(url); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -106,7 +110,11 @@ func (h *SubscriptionHandlers) update(c *gin.Context) {
 		return
 	}
 
-	oldURL := c.Param("url")
+	oldURL := c.Query("url")
+	if oldURL == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "url is required"})
+		return
+	}
 	if err := h.subscriptionMgr.UpdateSubscription(oldURL, oldURL, req.Name, req.Enabled); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return

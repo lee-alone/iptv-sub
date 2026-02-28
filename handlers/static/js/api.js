@@ -57,7 +57,7 @@ const api = {
      * 删除订阅源
      */
     async deleteSubscription(url) {
-        return await this.request('DELETE', `/subscriptions/${encodeURIComponent(url)}`);
+        return await this.request('DELETE', `/subscriptions?url=${encodeURIComponent(url)}`);
     },
 
     /**
