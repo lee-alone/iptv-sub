@@ -233,6 +233,7 @@
             }
 
             const btn = event.currentTarget;
+            const oldContent = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<i class="bi bi-hourglass-split"></i> 测试中...';
 
@@ -246,7 +247,7 @@
                 })
                 .finally(() => {
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="bi bi-lightning"></i> 测试所有';
+                    btn.innerHTML = oldContent;
                 });
         }
     </script>

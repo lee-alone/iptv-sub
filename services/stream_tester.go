@@ -28,6 +28,9 @@ type StreamTester struct {
 	hostCooldown    *HostCooldown
 	// HLS 检查器
 	hlsChecker *HLSChecker
+	// 测试状态
+	isTesting bool
+	statusMu  sync.RWMutex
 }
 
 // NewStreamTester 创建新的流测试器
@@ -114,6 +117,20 @@ func (st *StreamTester) TestStream(rawURL string) (bool, int64, error) {
 	return stream_tester.TestGenericURL(ctx, st.client, rawURL, userAgent, start)
 }
 
+// IsTesting 返回当前是否正在进行批量测试
+func (st *StreamTester) IsTesting() bool {
+	st.statusMu.RLock()
+	defer st.statusMu.RUnlock()
+	return st.isTesting
+}
+
+// setTesting 设置测试状态
+func (st *StreamTester) setTesting(testing bool) {
+	st.statusMu.Lock()
+	defer st.statusMu.Unlock()
+	st.isTesting = testing
+}
+
 // TestSingleChannel 测试单个频道
 func (st *StreamTester) TestSingleChannel(ch *models.Channel, testAllSources bool) {
 	channelTester := NewChannelTester(st)
@@ -134,6 +151,8 @@ func (st *StreamTester) BatchTest(channels []*models.Channel, testAllSources boo
 	}
 
 	st.logger.Info("Starting batch test for %d channels", len(channels))
+	st.setTesting(true)
+	defer st.setTesting(false)
 
 	// 创建工作池，使用自适应并发数
 	effectiveWorkers := st.adaptiveLimiter.GetEffectiveWorkers()

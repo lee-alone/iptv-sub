@@ -109,6 +109,37 @@
         </div>
     </div>
 
+    <!-- 编辑订阅源模态框 -->
+    <div class="modal fade" id="editModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">编辑订阅源</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editForm">
+                        <input type="hidden" id="editUrl">
+                        <div class="mb-3">
+                            <label class="form-label">名称</label>
+                            <input type="text" class="form-control" id="editName" required>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="editEnabled">
+                                <label class="form-check-label" for="editEnabled">启用此订阅源</label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveSubscriptionEdit()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 页脚 -->
     <footer class="bg-light py-3 mt-5">
         <div class="container-fluid text-center">
@@ -143,6 +174,9 @@
                         <td>${sub.channel_count || 0}</td>
                         <td>${getStatusBadge(sub.status)}</td>
                         <td>
+                            <button class="btn btn-sm btn-outline-info" onclick="editSubscription('${sub.url.replace(/'/g, "\\'")}', '${sub.name.replace(/'/g, "\\'")}', ${sub.enabled})">
+                                <i class="bi bi-pencil"></i> 编辑
+                            </button>
                             <button class="btn btn-sm btn-outline-primary" onclick="updateSubscription('${sub.url}', '${sub.name}')">
                                 <i class="bi bi-arrow-clockwise"></i> 更新
                             </button>
@@ -216,6 +250,43 @@
                 })
                 .catch(err => {
                     utils.showError('删除失败: ' + err.message);
+                });
+        }
+
+        function editSubscription(url, name, enabled) {
+            document.getElementById('editUrl').value = url;
+            document.getElementById('editName').value = name;
+            document.getElementById('editEnabled').checked = enabled;
+            const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+            editModal.show();
+        }
+
+        function saveSubscriptionEdit() {
+            const url = document.getElementById('editUrl').value;
+            const name = document.getElementById('editName').value.trim();
+            const enabled = document.getElementById('editEnabled').checked;
+
+            if (!name) {
+                utils.showError('请输入订阅源名称');
+                return;
+            }
+
+            const btn = event.currentTarget;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> 保存中...';
+
+            api.updateSubscription(url, name, enabled)
+                .then(() => {
+                    utils.showSuccess('订阅源已更新');
+                    bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+                    loadSubscriptions();
+                })
+                .catch(err => {
+                    utils.showError('更新失败: ' + err.message);
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = '保存';
                 });
         }
 

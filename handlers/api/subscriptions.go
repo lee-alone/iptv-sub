@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"iptv-aggregator/config"
@@ -48,6 +49,8 @@ func (h *SubscriptionHandlers) RegisterRoutes(rg *gin.RouterGroup) {
 		subs.POST("", h.add)
 		subs.DELETE("", h.remove)
 		subs.PUT("", h.update)
+		subs.GET("/export", h.export)
+		subs.POST("/import", h.importSubs)
 	}
 	// 更新所有订阅源
 	rg.POST("/subscriptions/update", h.updateAll)
@@ -187,5 +190,78 @@ func (h *SubscriptionHandlers) updateAll(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "update completed",
 		"results": results,
+	})
+}
+
+// export 导出所有订阅源为JSON
+func (h *SubscriptionHandlers) export(c *gin.Context) {
+	subs := h.subscriptionMgr.GetAllSubscriptions()
+
+	// 设置响应头为JSON格式下载
+	c.Header("Content-Disposition", "attachment; filename=subscriptions.json")
+	c.Header("Content-Type", "application/json")
+
+	data := gin.H{
+		"subscriptions": subs,
+		"version":       "1.0",
+	}
+
+	c.JSON(http.StatusOK, data)
+}
+
+// importSubs 导入订阅源
+func (h *SubscriptionHandlers) importSubs(c *gin.Context) {
+	var req struct {
+		Subscriptions interface{} `json:"subscriptions" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 转换为订阅源列表
+	var subs []map[string]interface{}
+	subsBytes, err := json.Marshal(req.Subscriptions)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid subscriptions format"})
+		return
+	}
+
+	if err := json.Unmarshal(subsBytes, &subs); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid subscriptions format"})
+		return
+	}
+
+	var added, failed int
+	for _, sub := range subs {
+		url, ok := sub["url"].(string)
+		if !ok || url == "" {
+			failed++
+			continue
+		}
+
+		name, _ := sub["name"].(string)
+		if name == "" {
+			name = url
+		}
+
+		enabled := true
+		if e, ok := sub["enabled"].(bool); ok {
+			enabled = e
+		}
+
+		if err := h.subscriptionMgr.AddSubscription(url, name, enabled); err != nil {
+			h.logger.Warn("Failed to import subscription %s: %v", url, err)
+			failed++
+			continue
+		}
+		added++
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "import completed",
+		"added":   added,
+		"failed":  failed,
 	})
 }

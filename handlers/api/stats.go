@@ -15,6 +15,7 @@ import (
 type StatsHandlers struct {
 	agg             *aggregator.ChannelAggregator
 	subscriptionMgr *services.SubscriptionManager
+	tester          *services.StreamTester
 	cfg             *config.Config
 	logger          *utils.Logger
 }
@@ -23,12 +24,14 @@ type StatsHandlers struct {
 func NewStatsHandlers(
 	agg *aggregator.ChannelAggregator,
 	subscriptionMgr *services.SubscriptionManager,
+	tester *services.StreamTester,
 	cfg *config.Config,
 	logger *utils.Logger,
 ) *StatsHandlers {
 	return &StatsHandlers{
 		agg:             agg,
 		subscriptionMgr: subscriptionMgr,
+		tester:          tester,
 		cfg:             cfg,
 		logger:          logger,
 	}
@@ -55,11 +58,16 @@ func (h *StatsHandlers) get(c *gin.Context) {
 		}
 	}
 
+	// 获取最后测试时间
+	lastTestTime := h.agg.GetLastTestTime()
+
 	c.JSON(http.StatusOK, gin.H{
 		"total_channels":    len(allChannels),
 		"online_channels":   len(onlineChannels),
 		"offline_channels":  len(offlineChannels),
 		"untested_channels": len(untestedChannels),
 		"subscriptions":     len(subs),
+		"last_test_time":    lastTestTime,
+		"is_testing":        h.tester.IsTesting(),
 	})
 }

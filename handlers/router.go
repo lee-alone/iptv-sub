@@ -110,7 +110,7 @@ func registerAPIRoutes(
 		configHandlers.RegisterRoutes(apiGroup)
 
 		// 统计 API
-		statsHandlers := api.NewStatsHandlers(agg, subscriptionMgr, cfg, logger)
+		statsHandlers := api.NewStatsHandlers(agg, subscriptionMgr, tester, cfg, logger)
 		statsHandlers.RegisterRoutes(apiGroup)
 
 		// 重启 API

@@ -61,6 +61,16 @@ const api = {
     },
 
     /**
+     * 更新单个订阅源
+     */
+    async updateSubscription(url, name, enabled = true) {
+        return await this.request('PUT', `/subscriptions?url=${encodeURIComponent(url)}`, {
+            name,
+            enabled,
+        });
+    },
+
+    /**
      * 更新所有订阅源
      */
     async updateSubscriptions() {
@@ -161,5 +171,21 @@ const api = {
      */
     async restart() {
         return await this.request('POST', '/restart');
+    },
+
+    /**
+     * 导出订阅源为JSON
+     */
+    async exportSubscriptions() {
+        return await this.request('GET', '/subscriptions/export');
+    },
+
+    /**
+     * 导入订阅源
+     */
+    async importSubscriptions(subscriptions) {
+        return await this.request('POST', '/subscriptions/import', {
+            subscriptions: subscriptions,
+        });
     },
 };

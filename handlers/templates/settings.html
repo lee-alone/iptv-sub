@@ -233,14 +233,11 @@
                         <h5 class="mb-0">快速操作</h5>
                     </div>
                     <div class="card-body">
-                        <button class="btn btn-primary w-100 mb-2" onclick="updateNow()">
-                            <i class="bi bi-arrow-repeat"></i> 立即更新
+                        <button class="btn btn-info w-100 mb-2" onclick="exportSubscriptions()">
+                            <i class="bi bi-download"></i> 导出订阅源
                         </button>
-                        <button class="btn btn-success w-100 mb-2" onclick="testNow()">
-                            <i class="bi bi-lightning"></i> 立即测试
-                        </button>
-                        <button class="btn btn-info w-100 mb-2" onclick="exportNow()">
-                            <i class="bi bi-download"></i> 立即导出
+                        <button class="btn btn-success w-100 mb-2" onclick="importSubscriptions()">
+                            <i class="bi bi-upload"></i> 导入订阅源
                         </button>
                         <button class="btn btn-danger w-100" onclick="restartNow()">
                             <i class="bi bi-power"></i> 重新启动
@@ -417,47 +414,70 @@
             });
         }
 
-        async function updateNow() {
-            if (!utils.confirm('确定要立即更新所有订阅源吗？')) {
-                return;
-            }
+        async function exportSubscriptions() {
             try {
-                utils.showSuccess('更新任务已启动...');
-                const result = await api.updateSubscriptions();
-                utils.showSuccess('更新完成！');
-                console.log('Update result:', result);
-            } catch (error) {
-                utils.showError('更新失败：' + error.message);
-            }
-        }
-
-        async function testNow() {
-            if (!utils.confirm('确定要立即测试所有频道吗？')) {
-                return;
-            }
-            try {
-                utils.showSuccess('测试任务已启动，请稍候...');
-                const testAllSources = document.getElementById('testAllSources').checked;
-                await api.testChannels(testAllSources);
-                utils.showSuccess('测试完成！');
-            } catch (error) {
-                utils.showError('测试失败：' + error.message);
-            }
-        }
-
-        async function exportNow() {
-            try {
-                utils.showSuccess('正在生成导出文件...');
-                const result = await api.exportChannels('m3u', true);
-                utils.showSuccess('导出完成！');
-                // 自动下载或显示链接
-                if (result.filepath) {
-                    const url = result.filepath.startsWith('http') ? result.filepath : '/' + result.filepath;
-                    window.open(url, '_blank');
-                }
+                utils.showSuccess('正在导出订阅源...');
+                const result = await api.exportSubscriptions();
+                
+                // 创建JSON文件并下载
+                const dataStr = JSON.stringify(result, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `subscriptions_${new Date().getTime()}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+                utils.showSuccess('订阅源已导出');
             } catch (error) {
                 utils.showError('导出失败：' + error.message);
             }
+        }
+
+        async function importSubscriptions() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    const contentStr = await file.text();
+                    const content = JSON.parse(contentStr);
+                    
+                    // 获取订阅源列表
+                    let subscriptions = content.subscriptions;
+                    if (!Array.isArray(subscriptions)) {
+                        utils.showError('导入失败：文件格式不正确，找不到 subscriptions 数组');
+                        return;
+                    }
+
+                    if (subscriptions.length === 0) {
+                        utils.showError('导入失败：订阅源列表为空');
+                        return;
+                    }
+
+                    // 确认导入
+                    if (!utils.confirm(`确定要导入 ${subscriptions.length} 个订阅源吗？`)) {
+                        return;
+                    }
+
+                    utils.showSuccess('正在导入订阅源...');
+                    const result = await api.importSubscriptions(subscriptions);
+                    utils.showSuccess(`导入完成：添加 ${result.added} 个，失败 ${result.failed} 个`);
+                } catch (error) {
+                    if (error instanceof SyntaxError) {
+                        utils.showError('导入失败：JSON 格式错误');
+                    } else {
+                        utils.showError('导入失败：' + error.message);
+                    }
+                }
+            };
+            input.click();
         }
 
         async function restartNow() {

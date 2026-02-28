@@ -83,7 +83,7 @@
                 <div class="card border-primary mb-4">
                     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class="bi bi-link-45deg"></i> 我的聚合订阅地址</h5>
-                        <span class="badge bg-white text-primary">最新在线</span>
+                        <span class="badge bg-white text-primary" id="lastTestBadge">最后测试时间：-</span>
                     </div>
                     <div class="card-body">
                         <div class="input-group">
@@ -197,6 +197,29 @@
                 document.getElementById('stat-online-channels').textContent = stats.online_channels || 0;
                 document.getElementById('stat-offline-channels').textContent = stats.offline_channels || 0;
                 document.getElementById('stat-untested-channels').textContent = stats.untested_channels || 0;
+                
+                // 更新最后测试时间
+                if (stats.last_test_time) {
+                    const lastTestDate = new Date(stats.last_test_time);
+                    const timeStr = lastTestDate.toLocaleString('zh-CN');
+                    document.getElementById('lastTestBadge').textContent = `最后测试时间：${timeStr}`;
+                } else {
+                    document.getElementById('lastTestBadge').textContent = '最后测试时间：未进行';
+                }
+
+                // 处理正在测试的状态
+                const testBtn = document.querySelector('button[onclick="testAllChannels()"]');
+                if (stats.is_testing) {
+                    testBtn.disabled = true;
+                    testBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> 正在测试中...';
+                    testBtn.classList.remove('btn-success');
+                    testBtn.classList.add('btn-secondary');
+                } else if (testBtn.disabled && testBtn.innerHTML.includes('测试中')) {
+                    testBtn.disabled = false;
+                    testBtn.innerHTML = '<i class="bi bi-lightning"></i> 测试所有频道';
+                    testBtn.classList.remove('btn-secondary');
+                    testBtn.classList.add('btn-success');
+                }
             }).catch(err => console.error('Failed to load stats:', err));
         }
 
@@ -249,17 +272,19 @@
         function testAllChannels() {
             if (confirm('确定要测试所有频道吗？这可能需要一些时间。')) {
                 const btn = event.currentTarget;
+                const oldContent = btn.innerHTML;
                 btn.disabled = true;
-                btn.innerHTML = '<i class="bi bi-lightning"></i> 测试中...';
+                btn.innerHTML = '<i class="bi bi-hourglass-split"></i> 测试中...';
 
                 api.testChannels().then(() => {
+                    utils.showSuccess('所有频道测试完成');
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="bi bi-lightning"></i> 测试所有频道';
+                    btn.innerHTML = oldContent;
                     loadStats();
                 }).catch(err => {
-                    alert('测试失败: ' + err.message);
+                    utils.showError('测试失败: ' + err.message);
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="bi bi-lightning"></i> 测试所有频道';
+                    btn.innerHTML = oldContent;
                 });
             }
         }
