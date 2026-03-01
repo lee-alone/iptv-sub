@@ -1,0 +1,53 @@
+{
+  "subscriptions": [
+    {
+      "url": "https://raw.githubusercontent.com/suxuang/myIPTV/refs/heads/main/ipv4.m3u",
+      "name": "myiptv_v4",
+      "enabled": true,
+      "status": "active",
+      "channel_count": 650,
+      "last_updated": "2026-03-01T02:05:29.716479688Z"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/suxuang/myIPTV/refs/heads/main/ipv6.m3u",
+      "name": "vbskycn_v6",
+      "enabled": true,
+      "status": "active",
+      "channel_count": 418,
+      "last_updated": "2026-03-01T02:05:29.715013274Z"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Guovin/iptv-api/gd/output/ipv6/result.m3u",
+      "name": "Guovin_v6",
+      "enabled": true,
+      "status": "active",
+      "channel_count": 459,
+      "last_updated": "2026-03-01T02:05:22.014173669Z"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Guovin/iptv-api/gd/output/ipv4/result.m3u",
+      "name": "Guovin_v4",
+      "enabled": true,
+      "status": "active",
+      "channel_count": 189,
+      "last_updated": "2026-03-01T02:05:22.262990686Z"
+    },
+    {
+      "url": "https://live.zbds.org/tv/iptv6.m3u",
+      "name": "vbskycn_v6",
+      "enabled": true,
+      "status": "active",
+      "channel_count": 2,
+      "last_updated": "2026-03-01T02:05:24.64289424Z"
+    },
+    {
+      "url": "https://live.zbds.org/tv/iptv4.m3u",
+      "name": "vbskycn_v4",
+      "enabled": true,
+      "status": "active",
+      "channel_count": 1314,
+      "last_updated": "2026-03-01T02:05:29.715824041Z"
+    }
+  ],
+  "version": "1.0"
+}
